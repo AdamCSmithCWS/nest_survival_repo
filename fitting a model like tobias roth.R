@@ -112,6 +112,10 @@ View(maxage)
 #Their y variable seems to be a measure of if the nest is alive or not - probably per day
 #hmmm, don't really understand that
 str(clean_nest_fate_data$Fate)
+clean_nest_fate_data$y <- clean_nest_fate_data$Fate
+#stan does not deal with categorical variables, so make it a 0,1 binary
+clean_nest_fate_data$y_numeric <- ifelse(clean_nest_fate_data$y == "success", 1, 0)
+str(clean_nest_fate_data$y_numeric)
 
 #I'm just going to keep it simple and add one predictor variable -- number of eggs hatched
 #this should be correlated with the length of time the nest was active
@@ -120,11 +124,16 @@ str(clean_nest_fate_data$X._of_Eggs_Hatched)
 
 clean_nest_fate_data$X._of_Eggs_Hatched<-as.integer(clean_nest_fate_data$X._of_Eggs_Hatched)
 str(clean_nest_fate_data$X._of_Eggs_Hatched)
-#there are NA's which I think STAN does not like.
-#so I'm just going to ignore missing values
-clean_nest_fate_data[!is.na(clean_nest_fate_data$X._of_Eggs_Hatched), ]
+#there's NA's  - so I use in<lower=0> in my stan model. So any negative value will not affect the model, I think
+clean_nest_fate_data$X._of_Eggs_Hatched[is.na(clean_nest_fate_data$X._of_Eggs_Hatched)] <- -1
 str(clean_nest_fate_data$X._of_Eggs_Hatched)
 
 #I'm renaming the variable here
-x_of_eggs <- clean_nest_fate_data$X._of_Eggs_Hatched
+clean_nest_fate_data$x_of_eggs <- clean_nest_fate_data$X._of_Eggs_Hatched
+View(clean_nest_fate_data$x_of_eggs)
+
+
+
+#now save this as an .rds
+saveRDS(clean_nest_fate_data, "preprocessed_data_like_tobias.rds")
 
