@@ -1,6 +1,8 @@
 #This script is to get data for my stan model
 setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo")
-library(raster)
+library(raster) # you may want to switch to using the terra package
+# https://rspatial.org/pkg/1-introduction.html
+# e.g., https://oceanhealthindex.org/news/raster_to_terra/
 library(dplyr)
 library(tidyverse)
 library(sf)
@@ -30,7 +32,7 @@ str(clean_nest_fate_data$Estimated.Nest.Initiation.Date)
 
 #the last day of the nest depends on if it's alive or dead (success or failed)
 #if alive -> then it's the hatch day = Hatch_Date
-#if dead, then it's the Last.Active day. 
+#if dead, then it's the Last.Active day.
 
 #so, let's make that one variable
 east_bay_only_data$last_observed <- ifelse(east_bay_only_data$Fate == "success",
@@ -56,5 +58,5 @@ int_maxage <- as.integer(maxage)
 
 str(east_bay_only_data)
 
-#okay, I'm not going to get anywhere until I understand what is "age" in tobias roth -- why is age -1.65, -1.54, etc. 
+#okay, I'm not going to get anywhere until I understand what is "age" in tobias roth -- why is age -1.65, -1.54, etc.
 
