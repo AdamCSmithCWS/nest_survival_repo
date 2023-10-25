@@ -19,11 +19,12 @@ model {
       S[i,t] = inv_logit(b[1] + b[2]*x_of_eggs[i]); // I haven't done b[3]*age[t] here!
     }
   }
-  
+
   //priors
-  
+
   //likelihood
   for(i in 1:Nnests) {
+
     for (t in (first_day_as_int_days [i] +1): last_day_as_int_days [i]){
       y[i,t] ~bernoulli(y[i,t-1]*S[i,t-1]);
     }
