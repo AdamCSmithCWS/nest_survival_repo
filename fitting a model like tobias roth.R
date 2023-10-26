@@ -1,6 +1,6 @@
 #This script is to get data for my stan model
 
-setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo/raw_data")
+setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo")
 library(raster) # you may want to switch to using the terra package
 # https://rspatial.org/pkg/1-introduction.html
 # e.g., https://oceanhealthindex.org/news/raster_to_terra/
@@ -26,8 +26,7 @@ clean_nest_fate_data <- east_bay_only_data %>% # two assignment "<-" operators d
 # str(Nnest)
 
 #I want to create a model that is like tobiasroth.github.io/BDAEcology
-#so I need predictor variables -- first observation, last observation, maxage, etc.
-# these are more indexing tools than they are predictors
+#so I need indexing tools  -- first observation, last observation, maxage, etc.
 # the model is a "known fate" model that estimates daily survival conditional on the
 # nest being "alive" the previous day. Therefore, the key data object is a matrix of
 # 1 and 0 with a row for each nest, a column for each day of the season (within any given year)
@@ -55,8 +54,8 @@ clean_nest_fate_data$start_date_ordinal <- ordinal_date_function(clean_nest_fate
 range(clean_nest_fate_data$start_date_ordinal)
 range(clean_nest_fate_data$start_date_ordinal,
       na.rm = TRUE) # there are quite a few NA values that will need to be removed.
-### but before removing NAs, we need to understand what they represent.
-### are they missing data, or something else? Are you confident that there is one row per nest?
+### NA's are due to blank spaces in the excel file. - missing data
+
 
 
 clean_nest_fate_data$end_date_ordinal <- ordinal_date_function(clean_nest_fate_data$end_date)
@@ -64,12 +63,11 @@ range(clean_nest_fate_data$end_date_ordinal)
 range(clean_nest_fate_data$end_date_ordinal,
       na.rm = TRUE) # there are quite a few NA values that will need to be removed.
 ### but before removing NAs, we need to understand what they represent.
-### are they missing data, or something else? Are you confident that there is one row per nest?
 
 
 earliest_ordinal_day <- min(clean_nest_fate_data$start_date_ordinal, na.rm = TRUE) -1
 ## earliest_ordinal_day (min() -1) is the base-date by which you can set the start of the season
-## this mutate call below sets all dates to an ordinal day from teh start of the season
+## this mutate call below sets all dates to an ordinal day from the start of the season
 clean_nest_fate_data <- clean_nest_fate_data %>%
   mutate(start_date_ordinal = start_date_ordinal - earliest_ordinal_day,
          end_date_ordinal = end_date_ordinal - earliest_ordinal_day)
@@ -91,16 +89,20 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 
 range(clean_nest_fate_data$eggs_hatched)
 
+
+
 range(clean_nest_fate_data$start_date_ordinal)
 range(clean_nest_fate_data$end_date_ordinal)
-# [1]  14 128 ## check this. I have a hard time believing the 128 value?
+# [1]  14 128 ## the 128 is because of an error in the end date -- apparently the nest end_date is october 6, 1952!
 hist(clean_nest_fate_data$end_date_ordinal)
-# yes, the 128 vlue is a huge outlier, maybe an incorrectly entered month?
 ## other than that one value all others are less than 60
 
 clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(end_date_ordinal < 60) %>%
   mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
+
+View(clean_nest_fate_data$eggs_hatched_scaled)
+
 
 maxage <- max(clean_nest_fate_data$end_date_ordinal)
 nNests <- nrow(clean_nest_fate_data)
@@ -128,9 +130,26 @@ ndays_df <- as.integer(clean_nest_fate_data$Mayfield_days..formula.)
 range(ndays_df - ndays_matrix, na.rm = TRUE)
 length(which(ndays_df - ndays_matrix == 0))
 length(which(ndays_df - ndays_matrix != 0))
-
 ## there are some where this calculation doesn't match up.
 ## worth checking why for the ~ 120 or so nests.
+
+
+#this code is to check why there are mismatches
+differences<- ndays_df - ndays_matrix !=0
+mismatched_data <- clean_nest_fate_data[differences, ]
+print(mismatched_data)
+View(mismatched_data)
+# Subset ndays_df and ndays_matrix where differences are not equal to 0
+mismatched_ndays_df <- ndays_df[differences]
+mismatched_ndays_matrix <- ndays_matrix[differences]
+
+# Create a data frame to display the differences
+mismatched_values <- data.frame(
+  ndays_df = mismatched_ndays_df,
+  ndays_matrix = mismatched_ndays_matrix
+)
+# Display the data frame with the mismatched values
+View(mismatched_values)
 
 
 # making the Stan data list -----------------------------------------------
