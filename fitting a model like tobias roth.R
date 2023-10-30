@@ -81,6 +81,104 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 
 range(clean_nest_fate_data$eggs_hatched,na.rm = TRUE)
 
+#density for the year 2000
+clean_data_2000<-clean_nest_fate_data %>%
+  filter(year == "2000")
+clean_data_2000$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2000$Nest_location_northing_WGS84_Dec_degree)
+clean_data_2000$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2000$Nest_location_Easting_WGS84_Dec_degree)
+#to turn into UTM, missing values in coordinates are not allowed
+clean_data_2000 <- clean_data_2000 %>%
+  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+#next I need to convert to UTM units
+utm_2000<- st_as_sf(x=clean_data_2000, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+coords_2000_utm <- st_transform(utm_2000,
+                       crs = 32617)
+st_crs(coords_2000_utm) #I believe I have changed it to EPSG = 32617
+
+#I need to do this for each year: to start, I will only do years 2000-2005
+#_________________________________________________________________
+clean_data_2001<-clean_nest_fate_data %>%
+  filter(year == "2001")
+clean_data_2001$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2001$Nest_location_northing_WGS84_Dec_degree)
+clean_data_2001$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2001$Nest_location_Easting_WGS84_Dec_degree)
+#to turn into UTM, missing values in coordinates are not allowed
+clean_data_2001 <- clean_data_2001 %>%
+  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+#next I need to convert to UTM units
+utm_2001<- st_as_sf(x=clean_data_2001, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+coords_2001_utm <- st_transform(utm_2001,
+                                crs = 32617)
+
+clean_data_2002<-clean_nest_fate_data %>%
+  filter(year == "2002")
+clean_data_2002$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2002$Nest_location_northing_WGS84_Dec_degree)
+clean_data_2002$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2002$Nest_location_Easting_WGS84_Dec_degree)
+#to turn into UTM, missing values in coordinates are not allowed
+clean_data_2002 <- clean_data_2002 %>%
+  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+#next I need to convert to UTM units
+utm_2002<- st_as_sf(x=clean_data_2002, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+coords_2002_utm <- st_transform(utm_2002,
+                                crs = 32617)
+
+clean_data_2003<-clean_nest_fate_data %>%
+  filter(year == "2003")
+clean_data_2003$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2003$Nest_location_northing_WGS84_Dec_degree)
+clean_data_2003$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2003$Nest_location_Easting_WGS84_Dec_degree)
+#to turn into UTM, missing values in coordinates are not allowed
+clean_data_2003 <- clean_data_2003 %>%
+  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+#next I need to convert to UTM units
+utm_2003<- st_as_sf(x=clean_data_2003, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+coords_2003_utm <- st_transform(utm_2003,
+                                crs = 32617)
+
+clean_data_2004<-clean_nest_fate_data %>%
+  filter(year == "2004")
+clean_data_2004$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2004$Nest_location_northing_WGS84_Dec_degree)
+clean_data_2004$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2004$Nest_location_Easting_WGS84_Dec_degree)
+#to turn into UTM, missing values in coordinates are not allowed
+clean_data_2004 <- clean_data_2004 %>%
+  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+#next I need to convert to UTM units
+utm_2004<- st_as_sf(x=clean_data_2004, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+coords_2004_utm <- st_transform(utm_2004,
+                                crs = 32617)
+
+clean_data_2005<-clean_nest_fate_data %>%
+  filter(year == "2005")
+clean_data_2005$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2005$Nest_location_northing_WGS84_Dec_degree)
+clean_data_2005$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2005$Nest_location_Easting_WGS84_Dec_degree)
+#to turn into UTM, missing values in coordinates are not allowed
+clean_data_2005 <- clean_data_2005 %>%
+  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+#next I need to convert to UTM units
+utm_2005<- st_as_sf(x=clean_data_2005, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+coords_2005_utm <- st_transform(utm_2005,
+                                crs = 32617)
+View(coords_2005_utm$Nest_loc)
+#______________________________________________________________________________
+
+#let's try binding these utm coordinates together
+utm_coords_list<- list(coords_2000_utm, coords_2001_utm, coords_2002_utm,
+                          coords_2003_utm, coords_2004_utm, coords_2005_utm)
+coords_utm_5years <- do.call(rbind, utm_coords_list)
+
+#determining number of nests within 50m
+#adapted from Freeman et al., 2023
+#first for year 2000
+
+# This function creates a matrix of distances between all point pairs
+dst2000 <- as.data.frame(pointDistance(Coords17[,3:4], lonlat=FALSE, allpairs = TRUE))
+
+
+
 ### removing nests with NA values in the start and end dates and the eggs_hatched column
 clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(!is.na(start_date_ordinal),
@@ -100,8 +198,6 @@ hist(clean_nest_fate_data$end_date_ordinal)
 clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(end_date_ordinal < 60) %>%
   mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
-
-View(clean_nest_fate_data$eggs_hatched_scaled)
 
 
 maxage <- max(clean_nest_fate_data$end_date_ordinal)
@@ -163,6 +259,7 @@ View(mismatched_values)
                     maxage = maxage,
                     y = y,
                     x_of_eggs = clean_nest_fate_data$eggs_hatched_scaled)
+
 
 
 str(stan_data)
