@@ -81,6 +81,80 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 
 range(clean_nest_fate_data$eggs_hatched,na.rm = TRUE)
 
+#snowmelt -- only applicable at the start of the year. For most of the summer, all snow has melted
+#likely positively correlated with density, because more snow = less available nesting habitat
+#however, it's at the start of the year only when many birds may not have nested yet.
+
+
+snow_data <- read_csv("raw_data/snowcover_EBM_allyears.csv")
+View (snow_data)
+str(snow_data)
+
+range(snow_data$SnowCover_per, na.rm = TRUE)
+#you can't have -1 snow. So the range should be 0-100.
+snow_data<- snow_data %>%
+  filter(SnowCover_per >=0)
+range(snow_data$SnowCover_per)
+
+# this needs to be the same length as my other covariates
+snow_data <- snow_data %>%
+  filter(!is.na(SnowCover_per),
+         !is.na(obsDate))
+
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  filter(!is.na(start_date_ordinal),
+         !is.na(end_date_ordinal))
+
+#making a for-loop
+#create a new column - called SnowCover_per (rename after to something simple)
+#if no data, then input 0 
+         
+clean_nest_fate_data$SnowCover_per <- 0
+
+for (i in 1:nrow(clean_nest_fate_data)) {
+  start_date_ordinal<- clean_nest_fate_data$start_date_ordinal[i]
+  end_date_ordinal<- clean_nest_fate_data$end_date_ordinal[i]
+  
+  for (j in 1:nrow(snow_data)) {
+    obs_date <- snow_data$obsDate[j]
+    
+    if(obs_date >= start_date_ordinal && obs_date<=end_date_ordinal) {
+      clean_nest_fate_data$SnowCover_per[i] <- snow_data$SnowCover_per[j]
+      break
+    }
+  }
+}
+range(clean_nest_fate_data$SnowCover_per)
+#it results in all 0.
+
+#try again:
+# Filter out rows with missing values in the relevant columns
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  filter(!is.na(start_date_ordinal), !is.na(end_date_ordinal))
+
+snow_data <- snow_data %>%
+  filter(!is.na(SnowCover_per), !is.na(obsDate))
+
+# Initialize the "SnowCover_per" column to 0
+clean_nest_fate_data$SnowCover_per <- 0
+
+# Iterate through nests and find matching snow cover
+for (i in 1:nrow(clean_nest_fate_data)) {
+  start_date_ordinal <- clean_nest_fate_data$start_date_ordinal[i]
+  end_date_ordinal <- clean_nest_fate_data$end_date_ordinal[i]
+  
+  matching_dates <- snow_data %>%
+    filter(obsDate >= start_date_ordinal, obsDate <= end_date_ordinal)
+  
+  if (nrow(matching_dates) > 0) {
+    # If there are matching dates, use the first one
+    clean_nest_fate_data$SnowCover_per[i] <- matching_dates$SnowCover_per[1]
+  }
+}
+range(clean_nest_fate_data$SnowCover_per)
+#still all 0 values.
+
+
 #density for the year 2000
 clean_data_2000<-clean_nest_fate_data %>%
   filter(year == "2000")
@@ -175,7 +249,7 @@ coords_utm_5years <- do.call(rbind, utm_coords_list)
 #first for year 2000
 
 # This function creates a matrix of distances between all point pairs
-dst2000 <- as.data.frame(pointDistance(Coords17[,3:4], lonlat=FALSE, allpairs = TRUE))
+dst2000 <- as.data.frame(pointDistance(coords_2000_utm[,3:4], lonlat=FALSE, allpairs = TRUE))
 
 
 
