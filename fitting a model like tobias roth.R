@@ -105,6 +105,7 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(!is.na(start_date_ordinal),
          !is.na(end_date_ordinal))
 
+
 #making a for-loop
 #create a new column - called SnowCover_per (rename after to something simple)
 #if no data, then input 0 
@@ -160,15 +161,56 @@ clean_data_2000<-clean_nest_fate_data %>%
   filter(year == "2000")
 clean_data_2000$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2000$Nest_location_northing_WGS84_Dec_degree)
 clean_data_2000$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2000$Nest_location_Easting_WGS84_Dec_degree)
-#to turn into UTM, missing values in coordinates are not allowed
 clean_data_2000 <- clean_data_2000 %>%
-  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+
+#this should identify the nearest point for each nest
+nest_loc <- clean_data_2000 %>%
+  st_as_sf(coords = c('Nest_location_Easting_WGS84_Dec_degree',
+                      'Nest_location_northing_WGS84_Dec_degree')) %>%
+  st_set_crs(4326)
+near_neib_2000<-st_nearest_feature(nest_loc)
+View(near_neib_2000)
+#it identifies the nearest point as being 0. 
+
+#this should measure the distance for each point, but it's not working
+near_nei_meters_2000 <- st_distance(nest_loc, nest_loc[near_neib_2000, ])
+View(near_nei_meters_2000)
+#it doesn't, but it produces a data matrix (near_nei_meters_2000) of 
+#all the distances between nests
+
+threshold_distance<-50
+library(units)
+threshold_distance<- set_units(50, "m")
+exclude_zero<- 0
+exclude_zero<- set_units (0, "m")
+dens_50m_2000<-numeric (nrow(near_nei_meters_2000))
+
+
+
+#trying this loop to calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(near_nei_meters_2000)) {
+  nest_in_50m_2000 <- sum(near_nei_meters_2000[i, ] > exclude_zero & near_nei_meters_2000[i, ] < threshold_distance)
+  
+  dens_50m_2000[i] <- nest_in_50m_2000
+}
+View(dens_50m_2000)
+#I think this worked!!
+#I counted the first three columns (V1,V2,V3) and got 3,1,1 respectively!
+
+
+
+#to turn into UTM, missing values in coordinates are not allowed
+#clean_data_2000 <- clean_data_2000 %>%
+ # filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
+ #        !is.na(Nest_location_Easting_WGS84_Dec_degree))
 #next I need to convert to UTM units
-utm_2000<- st_as_sf(x=clean_data_2000, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
-coords_2000_utm <- st_transform(utm_2000,
-                       crs = 32617)
-st_crs(coords_2000_utm) #I believe I have changed it to EPSG = 32617
+#utm_2000<- st_as_sf(x=clean_data_2000, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
+#coords_2000_utm <- st_transform(utm_2000, crs = "+proj=utm +zone=17")
+#st_crs(coords_2000_utm) #I believe I have changed it to EPSG = 32617
+#str(coords_2000_utm)
 
 #I need to do this for each year: to start, I will only do years 2000-2005
 #_________________________________________________________________
@@ -240,16 +282,18 @@ View(coords_2005_utm$Nest_loc)
 #______________________________________________________________________________
 
 #let's try binding these utm coordinates together
-utm_coords_list<- list(coords_2000_utm, coords_2001_utm, coords_2002_utm,
+#utm_coords_list<- list(coords_2000_utm, coords_2001_utm, coords_2002_utm,
                           coords_2003_utm, coords_2004_utm, coords_2005_utm)
-coords_utm_5years <- do.call(rbind, utm_coords_list)
+#coords_utm_5years <- do.call(rbind, utm_coords_list)
 
 #determining number of nests within 50m
 #adapted from Freeman et al., 2023
 #first for year 2000
 
-# This function creates a matrix of distances between all point pairs
-dst2000 <- as.data.frame(pointDistance(coords_2000_utm[,3:4], lonlat=FALSE, allpairs = TRUE))
+#find the minimum distance excluding itself (zero) -- so this is nearest neighbour
+
+
+
 
 
 
