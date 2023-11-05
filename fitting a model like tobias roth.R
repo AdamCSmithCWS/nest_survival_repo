@@ -8,10 +8,12 @@ library(raster) # you may want to switch to using the terra package
 library(tidyverse)
 library(sf)
 library(RANN)
+library(units)
 
 all_data<-read.csv("raw_data/Final_Nest_Monitoring_EABA&COAT_ALL_years.csv")
 
 east_bay_only_data <- subset(all_data, site== "East Bay Mainland")
+View(east_bay_only_data)
 
 #my response variable is nest fate (success or failed):
 #so I need to clean that variable -- remove unknowns
@@ -156,18 +158,20 @@ range(clean_nest_fate_data$SnowCover_per)
 #still all 0 values.
 
 
+
+  
 #density for the year 2000
-clean_data_2000<-clean_nest_fate_data %>%
+all_sp_2000<-east_bay_only_data %>%
   filter(year == "2000")
-clean_data_2000$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2000$Nest_location_northing_WGS84_Dec_degree)
-clean_data_2000$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2000$Nest_location_Easting_WGS84_Dec_degree)
-clean_data_2000 <- clean_data_2000 %>%
+all_sp_2000$Nest_location_northing_WGS84_Dec_degree<-as.numeric(all_sp_2000$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2000$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(all_sp_2000$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2000 <- all_sp_2000 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
 
 #this should identify the nearest point for each nest
-nest_loc <- clean_data_2000 %>%
+nest_loc <- all_sp_2000 %>%
   st_as_sf(coords = c('Nest_location_Easting_WGS84_Dec_degree',
                       'Nest_location_northing_WGS84_Dec_degree')) %>%
   st_set_crs(4326)
@@ -175,31 +179,35 @@ near_neib_2000<-st_nearest_feature(nest_loc)
 View(near_neib_2000)
 #it identifies the nearest point as being 0. 
 
-#this should measure the distance for each point, but it's not working
-near_nei_meters_2000 <- st_distance(nest_loc, nest_loc[near_neib_2000, ])
-View(near_nei_meters_2000)
-#it doesn't, but it produces a data matrix (near_nei_meters_2000) of 
-#all the distances between nests
+
+#create a data matrix of the distances between each nest
+dist_2000<-st_as_sf(x=all_sp_2000, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs= "WGS84")
+distance_matrix_2000<-st_distance(dist_2000)
 
 threshold_distance<-50
-library(units)
 threshold_distance<- set_units(50, "m")
 exclude_zero<- 0
 exclude_zero<- set_units (0, "m")
-dens_50m_2000<-numeric (nrow(near_nei_meters_2000))
+dens_50m_2000<-numeric (nrow(distance_matrix_2000))
 
 
 
 #trying this loop to calculate the number of nests within 50m, but not including 0 (itself)
-for (i in 1:nrow(near_nei_meters_2000)) {
-  nest_in_50m_2000 <- sum(near_nei_meters_2000[i, ] > exclude_zero & near_nei_meters_2000[i, ] < threshold_distance)
+for (i in 1:nrow(distance_matrix_2000)) {
+  nest_in_50m_2000 <- sum(distance_matrix_2000[i, ] > exclude_zero & distance_matrix_2000[i, ] < threshold_distance)
   
   dens_50m_2000[i] <- nest_in_50m_2000
 }
-View(dens_50m_2000)
-#I think this worked!!
-#I counted the first three columns (V1,V2,V3) and got 3,1,1 respectively!
+filtered_dens_2000 <- dens_50m_2000[which(all_sp_2000$Fate %in% c("success", "failed"))]
+View(filtered_dens_2000)
 
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2000", filtered_dens_2000, NA))
+
+#I think this worked!!
+#I counted the first three columns (V1,V2,V3, 4) and got 2,1,1,0 respectively!
 
 
 #to turn into UTM, missing values in coordinates are not allowed
@@ -212,78 +220,705 @@ View(dens_50m_2000)
 #st_crs(coords_2000_utm) #I believe I have changed it to EPSG = 32617
 #str(coords_2000_utm)
 
-#I need to do this for each year: to start, I will only do years 2000-2005
+
+
+
+#I need to do this for each year:
 #_________________________________________________________________
-clean_data_2001<-clean_nest_fate_data %>%
+
+
+#density for the year 1998
+all_sp_1998 <- east_bay_only_data %>%
+  filter(year == "1998")
+all_sp_1998$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_1998$Nest_location_northing_WGS84_Dec_degree)
+all_sp_1998$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_1998$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_1998 <- all_sp_1998 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_1998 <- st_as_sf(x = all_sp_1998, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_1998 <- st_distance(dist_1998)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_1998 <- numeric(nrow(distance_matrix_1998))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_1998)) {
+  nest_in_50m_1998 <- sum(distance_matrix_1998[i, ] > exclude_zero & distance_matrix_1998[i, ] < threshold_distance)
+  
+  dens_50m_1998[i] <- nest_in_50m_1998
+}
+filtered_dens_1998 <- dens_50m_1998[which(all_sp_1998$Fate %in% c("success", "failed"))]
+
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2018", filtered_dens_2018, NA))
+
+
+
+# density for the year 1999
+all_sp_1999 <- east_bay_only_data %>%
+  filter(year == "1999")
+all_sp_1999$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_1999$Nest_location_northing_WGS84_Dec_degree)
+all_sp_1999$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_1999$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_1999 <- all_sp_1999 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_1999 <- st_as_sf(x = all_sp_1999, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_1999 <- st_distance(dist_1999)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_1999 <- numeric(nrow(distance_matrix_1999))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_1999)) {
+  nest_in_50m_1999 <- sum(distance_matrix_1999[i, ] > exclude_zero & distance_matrix_1999[i, ] < threshold_distance)
+  
+  dens_50m_1999[i] <- nest_in_50m_1999
+}
+filtered_dens_1999 <- dens_50m_1999[which(all_sp_1999$Fate %in% c("success", "failed"))]
+
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "1999", filtered_dens_1999, NA))
+
+
+
+# Density for the year 2001
+all_sp_2001 <- east_bay_only_data %>%
   filter(year == "2001")
-clean_data_2001$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2001$Nest_location_northing_WGS84_Dec_degree)
-clean_data_2001$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2001$Nest_location_Easting_WGS84_Dec_degree)
-#to turn into UTM, missing values in coordinates are not allowed
-clean_data_2001 <- clean_data_2001 %>%
-  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
-#next I need to convert to UTM units
-utm_2001<- st_as_sf(x=clean_data_2001, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
-coords_2001_utm <- st_transform(utm_2001,
-                                crs = 32617)
+all_sp_2001$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2001$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2001$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2001$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2001 <- all_sp_2001 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
 
-clean_data_2002<-clean_nest_fate_data %>%
+# Create a data matrix of the distances between each nest
+dist_2001 <- st_as_sf(x = all_sp_2001, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2001 <- st_distance(dist_2001)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2001 <- numeric(nrow(distance_matrix_2001))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2001)) {
+  nest_in_50m_2001 <- sum(distance_matrix_2001[i, ] > exclude_zero & distance_matrix_2001[i, ] < threshold_distance)
+  
+  dens_50m_2001[i] <- nest_in_50m_2001
+}
+filtered_dens_2001 <- dens_50m_2001[which(all_sp_2001$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2001", filtered_dens_2001, NA))
+
+
+
+
+# Density for the year 2002
+all_sp_2002 <- east_bay_only_data %>%
   filter(year == "2002")
-clean_data_2002$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2002$Nest_location_northing_WGS84_Dec_degree)
-clean_data_2002$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2002$Nest_location_Easting_WGS84_Dec_degree)
-#to turn into UTM, missing values in coordinates are not allowed
-clean_data_2002 <- clean_data_2002 %>%
-  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
-#next I need to convert to UTM units
-utm_2002<- st_as_sf(x=clean_data_2002, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
-coords_2002_utm <- st_transform(utm_2002,
-                                crs = 32617)
+all_sp_2002$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2002$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2002$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2002$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2002 <- all_sp_2002 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
 
-clean_data_2003<-clean_nest_fate_data %>%
+# Create a data matrix of the distances between each nest
+dist_2002 <- st_as_sf(x = all_sp_2002, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2002 <- st_distance(dist_2002)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2002 <- numeric(nrow(distance_matrix_2002))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2002)) {
+  nest_in_50m_2002 <- sum(distance_matrix_2002[i, ] > exclude_zero & distance_matrix_2002[i, ] < threshold_distance)
+  
+  dens_50m_2002[i] <- nest_in_50m_2002
+}
+filtered_dens_2002 <- dens_50m_2002[which(all_sp_2002$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2002", filtered_dens_2002, NA))
+
+
+
+# Density for the year 2003
+all_sp_2003 <- east_bay_only_data %>%
   filter(year == "2003")
-clean_data_2003$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2003$Nest_location_northing_WGS84_Dec_degree)
-clean_data_2003$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2003$Nest_location_Easting_WGS84_Dec_degree)
-#to turn into UTM, missing values in coordinates are not allowed
-clean_data_2003 <- clean_data_2003 %>%
-  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
-#next I need to convert to UTM units
-utm_2003<- st_as_sf(x=clean_data_2003, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
-coords_2003_utm <- st_transform(utm_2003,
-                                crs = 32617)
+all_sp_2003$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2003$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2003$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2003$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2003 <- all_sp_2003 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
 
-clean_data_2004<-clean_nest_fate_data %>%
+# Create a data matrix of the distances between each nest
+dist_2003 <- st_as_sf(x = all_sp_2003, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2003 <- st_distance(dist_2003)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2003 <- numeric(nrow(distance_matrix_2003))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2003)) {
+  nest_in_50m_2003 <- sum(distance_matrix_2003[i, ] > exclude_zero & distance_matrix_2003[i, ] < threshold_distance)
+  
+  dens_50m_2003[i] <- nest_in_50m_2003
+}
+filtered_dens_2003 <- dens_50m_2003[which(all_sp_2003$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2003", filtered_dens_2003, NA))
+
+
+
+# Density for the year 2004
+all_sp_2004 <- east_bay_only_data %>%
   filter(year == "2004")
-clean_data_2004$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2004$Nest_location_northing_WGS84_Dec_degree)
-clean_data_2004$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2004$Nest_location_Easting_WGS84_Dec_degree)
-#to turn into UTM, missing values in coordinates are not allowed
-clean_data_2004 <- clean_data_2004 %>%
-  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
-#next I need to convert to UTM units
-utm_2004<- st_as_sf(x=clean_data_2004, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
-coords_2004_utm <- st_transform(utm_2004,
-                                crs = 32617)
+all_sp_2004$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2004$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2004$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2004$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2004 <- all_sp_2004 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
 
-clean_data_2005<-clean_nest_fate_data %>%
+# Create a data matrix of the distances between each nest
+dist_2004 <- st_as_sf(x = all_sp_2004, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2004 <- st_distance(dist_2004)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2004 <- numeric(nrow(distance_matrix_2004))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2004)) {
+  nest_in_50m_2004 <- sum(distance_matrix_2004[i, ] > exclude_zero & distance_matrix_2004[i, ] < threshold_distance)
+  
+  dens_50m_2004[i] <- nest_in_50m_2004
+}
+filtered_dens_2004 <- dens_50m_2004[which(all_sp_2004$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2004", filtered_dens_2004, NA))
+
+
+
+# Density for the year 2005
+all_sp_2005 <- east_bay_only_data %>%
   filter(year == "2005")
-clean_data_2005$Nest_location_northing_WGS84_Dec_degree<-as.numeric(clean_data_2005$Nest_location_northing_WGS84_Dec_degree)
-clean_data_2005$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(clean_data_2005$Nest_location_Easting_WGS84_Dec_degree)
-#to turn into UTM, missing values in coordinates are not allowed
-clean_data_2005 <- clean_data_2005 %>%
-  filter(!is.na(Nest_location_northing_WGS84_Dec_degree),
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
-#next I need to convert to UTM units
-utm_2005<- st_as_sf(x=clean_data_2005, coords = c("Nest_location_northing_WGS84_Dec_degree","Nest_location_Easting_WGS84_Dec_degree"), crs = 4328)
-coords_2005_utm <- st_transform(utm_2005,
-                                crs = 32617)
-View(coords_2005_utm$Nest_loc)
+all_sp_2005$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2005$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2005$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2005$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2005 <- all_sp_2005 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2005 <- st_as_sf(x = all_sp_2005, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2005 <- st_distance(dist_2005)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2005 <- numeric(nrow(distance_matrix_2005))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2005)) {
+  nest_in_50m_2005 <- sum(distance_matrix_2005[i, ] > exclude_zero & distance_matrix_2005[i, ] < threshold_distance)
+  
+  dens_50m_2005[i] <- nest_in_50m_2005
+}
+filtered_dens_2005 <- dens_50m_2005[which(all_sp_2005$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2005", filtered_dens_2005, NA))
+
+
+
+# Density for the year 2006
+all_sp_2006 <- east_bay_only_data %>%
+  filter(year == "2006")
+all_sp_2006$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2006$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2006$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2006$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2006 <- all_sp_2006 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2006 <- st_as_sf(x = all_sp_2006, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2006 <- st_distance(dist_2006)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2006 <- numeric(nrow(distance_matrix_2006))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2006)) {
+  nest_in_50m_2006 <- sum(distance_matrix_2006[i, ] > exclude_zero & distance_matrix_2006[i, ] < threshold_distance)
+  
+  dens_50m_2006[i] <- nest_in_50m_2006
+}
+filtered_dens_2006 <- dens_50m_2006[which(all_sp_2006$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2006", filtered_dens_2006, NA))
+
+
+
+# Density for the year 2007
+all_sp_2007 <- east_bay_only_data %>%
+  filter(year == "2007")
+all_sp_2007$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2007$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2007$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2007$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2007 <- all_sp_2007 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2007 <- st_as_sf(x = all_sp_2007, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2007 <- st_distance(dist_2007)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2007 <- numeric(nrow(distance_matrix_2007))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2007)) {
+  nest_in_50m_2007 <- sum(distance_matrix_2007[i, ] > exclude_zero & distance_matrix_2007[i, ] < threshold_distance)
+  
+  dens_50m_2007[i] <- nest_in_50m_2007
+}
+filtered_dens_2007 <- dens_50m_2007[which(all_sp_2007$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2007", filtered_dens_2007, NA))
+
+
+
+# Density for the year 2008
+all_sp_2008 <- east_bay_only_data %>%
+  filter(year == "2008")
+all_sp_2008$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2008$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2008$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2008$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2008 <- all_sp_2008 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2008 <- st_as_sf(x = all_sp_2008, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2008 <- st_distance(dist_2008)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2008 <- numeric(nrow(distance_matrix_2008))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2008)) {
+  nest_in_50m_2008 <- sum(distance_matrix_2008[i, ] > exclude_zero & distance_matrix_2008[i, ] < threshold_distance)
+  
+  dens_50m_2008[i] <- nest_in_50m_2008
+}
+filtered_dens_2008 <- dens_50m_2008[which(all_sp_2008$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2008", filtered_dens_2008, NA))
+
+
+
+# Density for the year 2009
+all_sp_2009 <- east_bay_only_data %>%
+  filter(year == "2009")
+all_sp_2009$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2009$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2009$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2009$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2009 <- all_sp_2009 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2009 <- st_as_sf(x = all_sp_2009, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2009 <- st_distance(dist_2009)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2009 <- numeric(nrow(distance_matrix_2009))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2009)) {
+  nest_in_50m_2009 <- sum(distance_matrix_2009[i, ] > exclude_zero & distance_matrix_2009[i, ] < threshold_distance)
+  
+  dens_50m_2009[i] <- nest_in_50m_2009
+}
+filtered_dens_2009 <- dens_50m_2009[which(all_sp_2009$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2009", filtered_dens_2009, NA))
+
+
+
+
+# Density for the year 2010
+all_sp_2010 <- east_bay_only_data %>%
+  filter(year == "2010")
+all_sp_2010$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2010$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2010$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2010$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2010 <- all_sp_2010 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2010 <- st_as_sf(x = all_sp_2010, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2010 <- st_distance(dist_2010)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2010 <- numeric(nrow(distance_matrix_2010))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2010)) {
+  nest_in_50m_2010 <- sum(distance_matrix_2010[i, ] > exclude_zero & distance_matrix_2010[i, ] < threshold_distance)
+  
+  dens_50m_2010[i] <- nest_in_50m_2010
+}
+filtered_dens_2010 <- dens_50m_2010[which(all_sp_2010$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2010", filtered_dens_2010, NA))
+
+
+
+# Density for the year 2011
+all_sp_2011 <- east_bay_only_data %>%
+  filter(year == "2011")
+all_sp_2011$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2011$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2011$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2011$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2011 <- all_sp_2011 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2011 <- st_as_sf(x = all_sp_2011, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2011 <- st_distance(dist_2011)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2011 <- numeric(nrow(distance_matrix_2011))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2011)) {
+  nest_in_50m_2011 <- sum(distance_matrix_2011[i, ] > exclude_zero & distance_matrix_2011[i, ] < threshold_distance)
+  
+  dens_50m_2011[i] <- nest_in_50m_2011
+}
+filtered_dens_2011 <- dens_50m_2011[which(all_sp_2011$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2011", filtered_dens_2011, NA))
+
+
+
+                      
+# Density for the year 2012
+all_sp_2012 <- east_bay_only_data %>%
+  filter(year == "2012")
+all_sp_2012$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2012$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2012$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2012$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2012 <- all_sp_2012 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2012 <- st_as_sf(x = all_sp_2012, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2012 <- st_distance(dist_2012)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2012 <- numeric(nrow(distance_matrix_2012))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2012)) {
+  nest_in_50m_2012 <- sum(distance_matrix_2012[i, ] > exclude_zero & distance_matrix_2012[i, ] < threshold_distance)
+  
+  dens_50m_2012[i] <- nest_in_50m_2012
+}
+filtered_dens_2012 <- dens_50m_2012[which(all_sp_2012$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2012", filtered_dens_2012, NA))
+
+
+
+
+# Density for the year 2013
+all_sp_2013 <- east_bay_only_data %>%
+  filter(year == "2013")
+all_sp_2013$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2013$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2013$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2013$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2013 <- all_sp_2013 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2013 <- st_as_sf(x = all_sp_2013, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2013 <- st_distance(dist_2013)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2013 <- numeric(nrow(distance_matrix_2013))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2013)) {
+  nest_in_50m_2013 <- sum(distance_matrix_2013[i, ] > exclude_zero & distance_matrix_2013[i, ] < threshold_distance)
+  
+  dens_50m_2013[i] <- nest_in_50m_2013
+}
+filtered_dens_2013 <- dens_50m_2013[which(all_sp_2013$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2013", filtered_dens_2013, NA))
+
+
+
+
+# Density for the year 2014
+all_sp_2014 <- east_bay_only_data %>%
+  filter(year == "2014")
+all_sp_2014$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2014$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2014$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2014$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2014 <- all_sp_2014 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2014 <- st_as_sf(x = all_sp_2014, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2014 <- st_distance(dist_2014)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2014 <- numeric(nrow(distance_matrix_2014))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2014)) {
+  nest_in_50m_2014 <- sum(distance_matrix_2014[i, ] > exclude_zero & distance_matrix_2014[i, ] < threshold_distance)
+  
+  dens_50m_2014[i] <- nest_in_50m_2014
+}
+filtered_dens_2014 <- dens_50m_2014[which(all_sp_2014$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2014", filtered_dens_2014, NA))
+
+
+
+
+# Density for the year 2015
+all_sp_2015 <- east_bay_only_data %>%
+  filter(year == "2015")
+all_sp_2015$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2015$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2015$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2015$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2015 <- all_sp_2015 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2015 <- st_as_sf(x = all_sp_2015, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2015 <- st_distance(dist_2015)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2015 <- numeric(nrow(distance_matrix_2015))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2015)) {
+  nest_in_50m_2015 <- sum(distance_matrix_2015[i, ] > exclude_zero & distance_matrix_2015[i, ] < threshold_distance)
+  
+  dens_50m_2015[i] <- nest_in_50m_2015
+}
+filtered_dens_2015 <- dens_50m_2015[which(all_sp_2015$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2015", filtered_dens_2015, NA))
+
+
+
+
+# Density for the year 2016
+all_sp_2016 <- east_bay_only_data %>%
+  filter(year == "2016")
+all_sp_2016$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2016$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2016$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2016$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2016 <- all_sp_2016 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2016 <- st_as_sf(x = all_sp_2016, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2016 <- st_distance(dist_2016)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2016 <- numeric(nrow(distance_matrix_2016))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2016)) {
+  nest_in_50m_2016 <- sum(distance_matrix_2016[i, ] > exclude_zero & distance_matrix_2016[i, ] < threshold_distance)
+  
+  dens_50m_2016[i] <- nest_in_50m_2016
+}
+filtered_dens_2016 <- dens_50m_2016[which(all_sp_2016$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2016", filtered_dens_2016, NA))
+
+
+
+# Density for the year 2017
+all_sp_2017 <- east_bay_only_data %>%
+  filter(year == "2017")
+all_sp_2017$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2017$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2017$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2017$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2017 <- all_sp_2017 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2017 <- st_as_sf(x = all_sp_2017, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2017 <- st_distance(dist_2017)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2017 <- numeric(nrow(distance_matrix_2017))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2017)) {
+  nest_in_50m_2017 <- sum(distance_matrix_2017[i, ] > exclude_zero & distance_matrix_2017[i, ] < threshold_distance)
+  
+  dens_50m_2017[i] <- nest_in_50m_2017
+}
+filtered_dens_2017 <- dens_50m_2017[which(all_sp_2017$Fate %in% c("success", "failed"))]
+
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2017", filtered_dens_2017, NA))
+
+
+
+# Density for the year 2018
+all_sp_2018 <- east_bay_only_data %>%
+  filter(year == "2018")
+all_sp_2018$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2018$Nest_location_northing_WGS84_Dec_degree)
+all_sp_2018$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2018$Nest_location_Easting_WGS84_Dec_degree)
+all_sp_2018 <- all_sp_2018 %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+
+# Create a data matrix of the distances between each nest
+dist_2018 <- st_as_sf(x = all_sp_2018, coords = c("Nest_location_Easting_WGS84_Dec_degree",
+                                                  "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
+distance_matrix_2018 <- st_distance(dist_2018)
+
+threshold_distance <- 50
+threshold_distance <- set_units(50, "m")
+exclude_zero <- 0
+exclude_zero <- set_units(0, "m")
+dens_50m_2018 <- numeric(nrow(distance_matrix_2018))
+
+# Calculate the number of nests within 50m, but not including 0 (itself)
+for (i in 1:nrow(distance_matrix_2018)) {
+  nest_in_50m_2018 <- sum(distance_matrix_2018[i, ] > exclude_zero & distance_matrix_2018[i, ] < threshold_distance)
+  
+  dens_50m_2018[i] <- nest_in_50m_2018
+}
+filtered_dens_2018 <- dens_50m_2018[which(all_sp_2018$Fate %in% c("success", "failed"))]
+
+# Add the density as a new column to the original dataframe
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  mutate(density_50m = ifelse(year == "2018", filtered_dens_2018, NA))
 #______________________________________________________________________________
 
 #let's try binding these utm coordinates together
 #utm_coords_list<- list(coords_2000_utm, coords_2001_utm, coords_2002_utm,
-                          coords_2003_utm, coords_2004_utm, coords_2005_utm)
+                          #coords_2003_utm, coords_2004_utm, coords_2005_utm)
 #coords_utm_5years <- do.call(rbind, utm_coords_list)
 
 #determining number of nests within 50m
@@ -291,9 +926,6 @@ View(coords_2005_utm$Nest_loc)
 #first for year 2000
 
 #find the minimum distance excluding itself (zero) -- so this is nearest neighbour
-
-
-
 
 
 
