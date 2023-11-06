@@ -13,7 +13,7 @@ library(units)
 all_data<-read.csv("raw_data/Final_Nest_Monitoring_EABA&COAT_ALL_years.csv")
 
 east_bay_only_data <- subset(all_data, site== "East Bay Mainland")
-View(east_bay_only_data)
+
 
 #my response variable is nest fate (success or failed):
 #so I need to clean that variable -- remove unknowns
@@ -171,13 +171,13 @@ all_sp_2000 <- all_sp_2000 %>%
 
 
 #this should identify the nearest point for each nest
-nest_loc <- all_sp_2000 %>%
+nest_loc_2000 <- all_sp_2000 %>%
   st_as_sf(coords = c('Nest_location_Easting_WGS84_Dec_degree',
                       'Nest_location_northing_WGS84_Dec_degree')) %>%
   st_set_crs(4326)
-near_neib_2000<-st_nearest_feature(nest_loc)
-View(near_neib_2000)
-#it identifies the nearest point as being 0. 
+near_neib_2000<-st_nearest_feature(nest_loc_2000)
+#it identifies the nearest point when I visually inspect with (distance_matrix_2000)
+#next up I need to figure out how to identify the species of each nearest point. 
 
 
 #create a data matrix of the distances between each nest
@@ -192,20 +192,19 @@ exclude_zero<- set_units (0, "m")
 dens_50m_2000<-numeric (nrow(distance_matrix_2000))
 
 
-
 #trying this loop to calculate the number of nests within 50m, but not including 0 (itself)
 for (i in 1:nrow(distance_matrix_2000)) {
   nest_in_50m_2000 <- sum(distance_matrix_2000[i, ] > exclude_zero & distance_matrix_2000[i, ] < threshold_distance)
   
   dens_50m_2000[i] <- nest_in_50m_2000
 }
+
 filtered_dens_2000 <- dens_50m_2000[which(all_sp_2000$Fate %in% c("success", "failed"))]
-View(filtered_dens_2000)
+
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
   mutate(density_50m = ifelse(year == "2000", filtered_dens_2000, NA))
-
 #I think this worked!!
 #I counted the first three columns (V1,V2,V3, 4) and got 2,1,1,0 respectively!
 
@@ -258,7 +257,7 @@ filtered_dens_1998 <- dens_50m_1998[which(all_sp_1998$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2018", filtered_dens_2018, NA))
+  mutate(density_50m = ifelse(year == "1998", filtered_dens_1998, density_50m))
 
 
 
@@ -293,7 +292,7 @@ filtered_dens_1999 <- dens_50m_1999[which(all_sp_1999$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "1999", filtered_dens_1999, NA))
+  mutate(density_50m = ifelse(year == "1999", filtered_dens_1999, density_50m))
 
 
 
@@ -327,7 +326,7 @@ filtered_dens_2001 <- dens_50m_2001[which(all_sp_2001$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2001", filtered_dens_2001, NA))
+  mutate(density_50m = ifelse(year == "2001", filtered_dens_2001, density_50m))
 
 
 
@@ -362,7 +361,7 @@ filtered_dens_2002 <- dens_50m_2002[which(all_sp_2002$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2002", filtered_dens_2002, NA))
+  mutate(density_50m = ifelse(year == "2002", filtered_dens_2002, density_50m))
 
 
 
@@ -396,7 +395,7 @@ filtered_dens_2003 <- dens_50m_2003[which(all_sp_2003$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2003", filtered_dens_2003, NA))
+  mutate(density_50m = ifelse(year == "2003", filtered_dens_2003, density_50m))
 
 
 
@@ -430,7 +429,7 @@ filtered_dens_2004 <- dens_50m_2004[which(all_sp_2004$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2004", filtered_dens_2004, NA))
+  mutate(density_50m = ifelse(year == "2004", filtered_dens_2004, density_50m))
 
 
 
@@ -464,7 +463,7 @@ filtered_dens_2005 <- dens_50m_2005[which(all_sp_2005$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2005", filtered_dens_2005, NA))
+  mutate(density_50m = ifelse(year == "2005", filtered_dens_2005, density_50m))
 
 
 
@@ -498,7 +497,7 @@ filtered_dens_2006 <- dens_50m_2006[which(all_sp_2006$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2006", filtered_dens_2006, NA))
+  mutate(density_50m = ifelse(year == "2006", filtered_dens_2006, density_50m))
 
 
 
@@ -532,7 +531,7 @@ filtered_dens_2007 <- dens_50m_2007[which(all_sp_2007$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2007", filtered_dens_2007, NA))
+  mutate(density_50m = ifelse(year == "2007", filtered_dens_2007, density_50m))
 
 
 
@@ -566,7 +565,7 @@ filtered_dens_2008 <- dens_50m_2008[which(all_sp_2008$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2008", filtered_dens_2008, NA))
+  mutate(density_50m = ifelse(year == "2008", filtered_dens_2008, density_50m))
 
 
 
@@ -600,7 +599,7 @@ filtered_dens_2009 <- dens_50m_2009[which(all_sp_2009$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2009", filtered_dens_2009, NA))
+  mutate(density_50m = ifelse(year == "2009", filtered_dens_2009, density_50m))
 
 
 
@@ -635,7 +634,7 @@ filtered_dens_2010 <- dens_50m_2010[which(all_sp_2010$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2010", filtered_dens_2010, NA))
+  mutate(density_50m = ifelse(year == "2010", filtered_dens_2010, density_50m))
 
 
 
@@ -669,7 +668,7 @@ filtered_dens_2011 <- dens_50m_2011[which(all_sp_2011$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2011", filtered_dens_2011, NA))
+  mutate(density_50m = ifelse(year == "2011", filtered_dens_2011, density_50m))
 
 
 
@@ -704,7 +703,7 @@ filtered_dens_2012 <- dens_50m_2012[which(all_sp_2012$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2012", filtered_dens_2012, NA))
+  mutate(density_50m = ifelse(year == "2012", filtered_dens_2012, density_50m))
 
 
 
@@ -739,7 +738,7 @@ filtered_dens_2013 <- dens_50m_2013[which(all_sp_2013$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2013", filtered_dens_2013, NA))
+  mutate(density_50m = ifelse(year == "2013", filtered_dens_2013, density_50m))
 
 
 
@@ -774,7 +773,7 @@ filtered_dens_2014 <- dens_50m_2014[which(all_sp_2014$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2014", filtered_dens_2014, NA))
+  mutate(density_50m = ifelse(year == "2014", filtered_dens_2014, density_50m))
 
 
 
@@ -809,7 +808,7 @@ filtered_dens_2015 <- dens_50m_2015[which(all_sp_2015$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2015", filtered_dens_2015, NA))
+  mutate(density_50m = ifelse(year == "2015", filtered_dens_2015, density_50m))
 
 
 
@@ -844,7 +843,7 @@ filtered_dens_2016 <- dens_50m_2016[which(all_sp_2016$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2016", filtered_dens_2016, NA))
+  mutate(density_50m = ifelse(year == "2016", filtered_dens_2016, density_50m))
 
 
 
@@ -879,7 +878,7 @@ filtered_dens_2017 <- dens_50m_2017[which(all_sp_2017$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2017", filtered_dens_2017, NA))
+  mutate(density_50m = ifelse(year == "2017", filtered_dens_2017, density_50m))
 
 
 
@@ -913,7 +912,7 @@ filtered_dens_2018 <- dens_50m_2018[which(all_sp_2018$Fate %in% c("success", "fa
 
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(density_50m = ifelse(year == "2018", filtered_dens_2018, NA))
+  mutate(density_50m = ifelse(year == "2018", filtered_dens_2018, density_50m))
 #______________________________________________________________________________
 
 #let's try binding these utm coordinates together
@@ -933,22 +932,19 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(!is.na(start_date_ordinal),
          !is.na(end_date_ordinal),
-         !is.na(eggs_hatched))
+         !is.na(density_50m))
 
-range(clean_nest_fate_data$eggs_hatched)
-
-
-
+range(clean_nest_fate_data$density_50m)
 range(clean_nest_fate_data$start_date_ordinal)
 range(clean_nest_fate_data$end_date_ordinal)
 # [1]  14 128 ## the 128 is because of an error in the end date -- apparently the nest end_date is october 6, 1952!
 hist(clean_nest_fate_data$end_date_ordinal)
 ## other than that one value all others are less than 60
 
-clean_nest_fate_data <- clean_nest_fate_data %>%
-  filter(end_date_ordinal < 60) %>%
-  mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
-
+#clean_nest_fate_data <- clean_nest_fate_data %>%
+ # filter(end_date_ordinal < 60) %>%
+  #mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
+#DO I WANT TO SCALE MY DENSITY VARIABLE??
 
 maxage <- max(clean_nest_fate_data$end_date_ordinal)
 nNests <- nrow(clean_nest_fate_data)
@@ -995,7 +991,7 @@ mismatched_values <- data.frame(
   ndays_matrix = mismatched_ndays_matrix
 )
 # Display the data frame with the mismatched values
-View(mismatched_values)
+#View(mismatched_values)
 
 
 # making the Stan data list -----------------------------------------------
@@ -1008,7 +1004,7 @@ View(mismatched_values)
                     last_day_as_int_days = clean_nest_fate_data$end_date_ordinal,
                     maxage = maxage,
                     y = y,
-                    x_of_eggs = clean_nest_fate_data$eggs_hatched_scaled)
+                    density_50m = clean_nest_fate_data$density_50m)
 
 
 
