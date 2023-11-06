@@ -5,10 +5,11 @@ data {
   int<lower=0> maxage; //maximum of last
   array[Nnests, maxage]int<lower=0, upper=1> y; //indicator of alive nests
   array[Nnests]int<lower=0> density_50m; //a covariate of the nests
+  array[Nnests] int<lower=0> snow_per;
 }
 
 parameters {
-  vector[2] b; // I only need two priors right? because I have two predictors
+  vector[3] b; // I only need two priors right? because I have two predictors
 }
 
 model {
@@ -16,7 +17,7 @@ model {
 
   for(i in 1:Nnests){
     for(t in first_day_as_int_days[i]: (last_day_as_int_days[i]-1)){
-      S[i,t] = inv_logit(b[1] + b[2]*density_50m[i]); // I haven't done b[3]*age[t] here!
+      S[i,t] = inv_logit(b[1] + b[2]*density_50m[i] +b[3]*snow_per[i]); // I haven't done b[3]*age[t] here!
     }
   }
 
