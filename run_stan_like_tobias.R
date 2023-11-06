@@ -33,5 +33,5 @@ View(summ_model)
 
 
 library(boot)
-inv.logit(0.107)
+inv.logit(0.009489755)#for density (b2) #this may change as my model changes
 
