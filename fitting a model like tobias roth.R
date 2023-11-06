@@ -89,14 +89,13 @@ range(clean_nest_fate_data$eggs_hatched,na.rm = TRUE)
 
 
 snow_data <- read_csv("raw_data/snowcover_EBM_allyears.csv")
-View (snow_data)
 str(snow_data)
 
 range(snow_data$SnowCover_per, na.rm = TRUE)
 #you can't have -1 snow. So the range should be 0-100.
 snow_data<- snow_data %>%
-  filter(SnowCover_per >=0)
-range(snow_data$SnowCover_per)
+  mutate(SnowCover_per = ifelse(SnowCover_per == -1,0,SnowCover_per))
+range(snow_data$SnowCover_per, na.rm = TRUE)
 
 # this needs to be the same length as my other covariates
 snow_data <- snow_data %>%
@@ -112,54 +111,31 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 #create a new column - called SnowCover_per (rename after to something simple)
 #if no data, then input 0 
          
-clean_nest_fate_data$SnowCover_per <- 0
+clean_nest_fate_data$snow_per <- 0
 
 for (i in 1:nrow(clean_nest_fate_data)) {
-  start_date_ordinal<- clean_nest_fate_data$start_date_ordinal[i]
-  end_date_ordinal<- clean_nest_fate_data$end_date_ordinal[i]
+  start_date<- clean_nest_fate_data$start_date[i]
   
-  for (j in 1:nrow(snow_data)) {
-    obs_date <- snow_data$obsDate[j]
+  yr <- clean_nest_fate_data$year[i]
+  
+  if(yr == 1998){
+    clean_nest_fate_data$snow_per[i] <- NA
+  }else{
+    start_week <- start_date+c(-3:3)
     
-    if(obs_date >= start_date_ordinal && obs_date<=end_date_ordinal) {
-      clean_nest_fate_data$SnowCover_per[i] <- snow_data$SnowCover_per[j]
-      break
-    }
-  }
-}
-range(clean_nest_fate_data$SnowCover_per)
-#it results in all 0.
-
-#try again:
-# Filter out rows with missing values in the relevant columns
-clean_nest_fate_data <- clean_nest_fate_data %>%
-  filter(!is.na(start_date_ordinal), !is.na(end_date_ordinal))
-
-snow_data <- snow_data %>%
-  filter(!is.na(SnowCover_per), !is.na(obsDate))
-
-# Initialize the "SnowCover_per" column to 0
-clean_nest_fate_data$SnowCover_per <- 0
-
-# Iterate through nests and find matching snow cover
-for (i in 1:nrow(clean_nest_fate_data)) {
-  start_date_ordinal <- clean_nest_fate_data$start_date_ordinal[i]
-  end_date_ordinal <- clean_nest_fate_data$end_date_ordinal[i]
+    tmp_snow <- snow_data %>% 
+      filter(obsDate %in% start_week)
+    
+    snow_fill <- max(tmp_snow$SnowCover_per,na.rm = TRUE)
+    
+    
+    clean_nest_fate_data$snow_per[i] <- ifelse(is.finite(snow_fill),snow_fill,0)
+    #break
+    }}
+range(clean_nest_fate_data$snow_per,na.rm = TRUE)
   
-  matching_dates <- snow_data %>%
-    filter(obsDate >= start_date_ordinal, obsDate <= end_date_ordinal)
-  
-  if (nrow(matching_dates) > 0) {
-    # If there are matching dates, use the first one
-    clean_nest_fate_data$SnowCover_per[i] <- matching_dates$SnowCover_per[1]
-  }
-}
-range(clean_nest_fate_data$SnowCover_per)
-#still all 0 values.
+length(which(is.na(clean_nest_fate_data$snow_per)))
 
-
-
-  
 #density for the year 2000
 all_sp_2000<-east_bay_only_data %>%
   filter(year == "2000")
@@ -932,11 +908,13 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(!is.na(start_date_ordinal),
          !is.na(end_date_ordinal),
-         !is.na(density_50m))
+         !is.na(density_50m),
+         !is.na(snow_per))
 
 range(clean_nest_fate_data$density_50m)
 range(clean_nest_fate_data$start_date_ordinal)
 range(clean_nest_fate_data$end_date_ordinal)
+range(clean_nest_fate_data$snow_per)
 # [1]  14 128 ## the 128 is because of an error in the end date -- apparently the nest end_date is october 6, 1952!
 hist(clean_nest_fate_data$end_date_ordinal)
 ## other than that one value all others are less than 60
@@ -944,7 +922,7 @@ hist(clean_nest_fate_data$end_date_ordinal)
 #clean_nest_fate_data <- clean_nest_fate_data %>%
  # filter(end_date_ordinal < 60) %>%
   #mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
-#DO I WANT TO SCALE MY DENSITY VARIABLE??
+#DO I WANT TO SCALE MY DENSITY AND SNOW_PER VARIABLE??
 
 maxage <- max(clean_nest_fate_data$end_date_ordinal)
 nNests <- nrow(clean_nest_fate_data)
@@ -979,8 +957,8 @@ length(which(ndays_df - ndays_matrix != 0))
 #this code is to check why there are mismatches
 differences<- ndays_df - ndays_matrix !=0
 mismatched_data <- clean_nest_fate_data[differences, ]
-print(mismatched_data)
-View(mismatched_data)
+#print(mismatched_data)
+#View(mismatched_data)
 # Subset ndays_df and ndays_matrix where differences are not equal to 0
 mismatched_ndays_df <- ndays_df[differences]
 mismatched_ndays_matrix <- ndays_matrix[differences]
@@ -1004,7 +982,8 @@ mismatched_values <- data.frame(
                     last_day_as_int_days = clean_nest_fate_data$end_date_ordinal,
                     maxage = maxage,
                     y = y,
-                    density_50m = clean_nest_fate_data$density_50m)
+                    density_50m = clean_nest_fate_data$density_50m,
+                    snow_per=clean_nest_fate_data$snow_per)
 
 
 
