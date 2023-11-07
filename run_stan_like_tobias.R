@@ -15,7 +15,7 @@ setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research proj
 #                                   verbose = TRUE)
 #
 
-stan_data <- readRDS("stan_data_list.rds")
+stan_data <- readRDS("stan_data_list_50m.rds")
 
 ## try cmdstanr: https://mc-stan.org/cmdstanr/articles/cmdstanr.html
 library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and it gives nicer error messages
