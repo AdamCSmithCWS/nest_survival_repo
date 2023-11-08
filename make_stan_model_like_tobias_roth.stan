@@ -6,6 +6,7 @@ data {
   array[Nnests, maxage]int<lower=0, upper=1> y; //indicator of alive nests
   array[Nnests]int<lower=0> density_50m; //a covariate of the nests
   array[Nnests] int<lower=0> snow_per;
+  int<lower=0,upper=1> use_likelihood;
 }
 
 parameters {
@@ -22,13 +23,16 @@ model {
   }
 
   //priors
-
+  b ~ normal(0,1);
+  
   //likelihood
+  if(use_likelihood){
   for(i in 1:Nnests) {
 
     for (t in (first_day_as_int_days [i] +1): last_day_as_int_days [i]){
       y[i,t] ~bernoulli(y[i,t-1]*S[i,t-1]);
     }
+  }
   }
 }
 
