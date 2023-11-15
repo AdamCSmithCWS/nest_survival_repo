@@ -1,7 +1,9 @@
 #This script is to get data for my stan model
+#let's get github back in order
+#how to pull?
 
-setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo")
-library(raster) # you may want to switch to using the terra package
+#setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo")
+#library(raster) # you may want to switch to using the terra package
 # https://rspatial.org/pkg/1-introduction.html
 # e.g., https://oceanhealthindex.org/news/raster_to_terra/
 # library(dplyr) # dplyr is part of the tidyverse, so you don't need to load it directly
@@ -78,10 +80,10 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 
 # covariate ---------------------------------------------------------------
 
-clean_nest_fate_data <- clean_nest_fate_data %>%
-  mutate(eggs_hatched = as.integer(X._of_Eggs_Hatched))
+#clean_nest_fate_data <- clean_nest_fate_data %>%
+  #mutate(eggs_hatched = as.integer(X._of_Eggs_Hatched))
 
-range(clean_nest_fate_data$eggs_hatched,na.rm = TRUE)
+#range(clean_nest_fate_data$eggs_hatched,na.rm = TRUE)
 
 #snowmelt -- only applicable at the start of the year. For most of the summer, all snow has melted
 #likely positively correlated with density, because more snow = less available nesting habitat
@@ -133,8 +135,124 @@ for (i in 1:nrow(clean_nest_fate_data)) {
     #break
     }}
 range(clean_nest_fate_data$snow_per,na.rm = TRUE)
-  
+
+#I do not want to centre snow because my model should hold snow constant at 0, not at mean snow
+#but I do want to scale snow so that the units are comparable
 length(which(is.na(clean_nest_fate_data$snow_per)))
+clean_nest_fate_data$snow_per_scaled<-scale(clean_nest_fate_data$snow_per, center = FALSE)
+range(clean_nest_fate_data$snow_per_scaled) #includes NA at this point so range is Na-NA. But after I filter NA
+#range becomes 0.00000 5.45993. 
+#so now I have scaled my snow predictor, but not centered around 0 - mean = 0.3, sd = about 1 (0.949)
+#is the sd too far away from 1?
+#mean(clean_nest_fate_data$snow_per_scaled) #must drop NA's first for these to work
+#sd(clean_nest_fate_data$snow_per_scaled) #must drop NA's first for these to work
+
+
+#let's try density and nn again:
+#_________________________________________________________________________________________
+#filter the nests that overlap for at least 1 day
+# Function to check overlap
+overlap_check <- function(start1, end1, start2, end2) {
+  return(as.Date(start1, format="%d-%b-%Y") <= as.Date(end2, format="%d-%b-%Y") & as.Date(end1, format="%d-%b-%Y") >= as.Date(start2, format="%d-%b-%Y"))
+}
+#This didn't work with the start_date and end_date we made earlier
+# Create an empty matrix
+#nest_overlap_matrix <- matrix(0, nrow = nrow(clean_nest_fate_data), ncol = nrow(clean_nest_fate_data))
+
+# Loop through each pair of nests and check for overlap
+#for (i in 1:(nrow(clean_nest_fate_data) - 1)) {
+ # for (j in (i + 1):nrow(clean_nest_fate_data)) {
+  #  nests_overlap_matrix[i, j] <- overlap_check(
+   #   clean_nest_fate_data$start_date[i],
+    #  clean_nest_fate_data$end_date[i],
+     # clean_nest_fate_data$start_date[j],
+      #clean_nest_fate_data$end_date[j]
+    #)
+    #nest_overlap_matrix[j, i] <- nest_overlap_matrix[i, j]  # Since the matrix is symmetric
+  #}
+#}
+
+#trying it this way
+# Create an empty matrix
+nests_overlap_matrix <- matrix(0, nrow = nrow(east_bay_only_data), ncol = nrow(east_bay_only_data))
+
+# Loop through each pair of nests and check for overlap
+for (i in 1:(nrow(east_bay_only_data) - 1)) {
+  for (j in (i + 1):nrow(east_bay_only_data)) {
+    nests_overlap_matrix[i, j] <- overlap_check(
+      clean_nest_fate_data$Mayfield_start_date..formula.[i],
+      clean_nest_fate_data$Mayfield_end.date..formula.[i],
+      clean_nest_fate_data$Mayfield_start_date..formula.[j],
+      clean_nest_fate_data$Mayfield_end.date..formula.[j]
+      )
+    nests_overlap_matrix[j, i] <- nests_overlap_matrix[i, j]  # Since the matrix is symmetric
+  }
+}
+View(nests_overlap_matrix)
+#This worked!! So my density calculations and stuff should work for the entire dataset. 
+#I don't have to separate by year anymore
+
+#get rid of NAs
+nest_data<-east_bay_only_data
+nest_data$Nest_location_northing_WGS84_Dec_degree<-as.numeric(nest_data$Nest_location_northing_WGS84_Dec_degree)
+nest_data$Nest_location_Easting_WGS84_Dec_degree<-as.numeric(nest_data$Nest_location_Easting_WGS84_Dec_degree)
+nest_data <- nest_data %>%
+  filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
+         !is.na(Nest_location_northing_WGS84_Dec_degree))
+#convert data to an sf (simple features) object
+sf_nest_data <- nest_data %>%
+  st_as_sf(coords = c('Nest_location_Easting_WGS84_Dec_degree',
+                      'Nest_location_northing_WGS84_Dec_degree')) %>%
+  st_set_crs(4326)
+
+#Now I identify which nests are overlapping:
+overlapping_nests<-which(nests_overlap_matrix == 1, arr.ind=TRUE)
+str(overlapping_nests)
+#overlapping_nests is an array of every point that is a 1 in my nests_overlap_matrix
+overlapping_nest_data<-sf_nest_data[overlapping_nests[, 1], ]
+overlapping_nest_data$near_neigh<-st_nearest_feature(overlapping_nest_data, sf_nest_data)
+View(overlapping_nest_data$near_neigh)
+#This loads for a long time, but eventually works-- is it because overlapping nest data has 146,202 observations?
+#is there a better way to do this?
+str(overlapping_nest_data)
+View(overlapping_nest_data)
+View(sf_nest_data)
+#I'm having trouble checking to see if this is right?
+#Supposedly, the output of overlapping_nest_data$near_neigh means that each value in the vector represents the index
+#of the nearest neighbor in the original sf_nest_data.
+#so output [1] 2) indicates that the nearest neighbor for the first row in overlapping_nest_data is the second row in
+#the original sf_nest_data. Similarly, the second value ([2] 3) indicates that the nearest neighbor for the second row in overlapping_nest_data is the third row in the original sf_nest_data, and so on.
+
+
+# Create an empty column to store distances
+overlapping_nest_data$dist_nn <- NA
+
+# Iterate through each nest and calculate the distance to its nearest neighbor
+#THIS LOADS FOREVER! -- ughhh not working
+for (i in 1:nrow(overlapping_nest_data)) {
+  nearest_neighbor_index <- overlapping_nest_data$near_neigh[i]
+  distance_near_neigh <- st_distance(overlapping_nest_data[i, ], overlapping_nest_data[nearest_neighbor_index, ])
+  overlapping_nest_data$dist_nn[i] <- distance_near_neigh
+}
+
+#filter for only nests that have Fate = Success or Failed
+filtered_dist_nn <- overlapping_nest_data$dist_nn[which(nest_data$Fate %in% c("success", "failed"))]
+#check to see if it worked
+# Add nearest neighbor as a new column to the original dataframe
+clean_nest_fate_data$dist_of_nn <- filtered_dist_nn
+#Note that this won't work unless I run the rest of the code first because I need to make clean_nest_fate_data 1919 rows instead of 1937.
+View(clean_nest_fate_data$dist_of_nn) #I'm not convinced this worked -- need to check. 
+#I compared with clean_nest_fate_data$nearest_neigh_dist which is only calculated for the year 2000
+#the results are different -- now they may be a bit different because i am only including overlapping nests, but seems very large. 
+
+#the next step would be to identify the species so that I can control for sabine's gulls
+#to do this, would I code all species 0 except for sabine's gulls, coded as 1?
+#then in the model, it would hold species constant at 0, right? i.e excluding sabine's gulls
+#or is there a better way to do that?
+
+#After that, I would just apply my overlapping matrix to density. 
+
+#________________________________________________________________________________________
 
 #density and nearest neighbour for the year 2000
 all_sp_2000<-east_bay_only_data %>%
@@ -152,11 +270,10 @@ nest_loc_2000 <- all_sp_2000 %>%
                       'Nest_location_northing_WGS84_Dec_degree')) %>%
   st_set_crs(4326)
 
-#filter the nests that overlap for at least 1 day
+
 nest_loc_2000$start_date_2000 <- lubridate::dmy(nest_loc_2000$Mayfield_start_date..formula.)
 nest_loc_2000$end_date_2000 <- lubridate::dmy(nest_loc_2000$Mayfield_end.date..formula.)
 overlapping_nests_2000<- nest_loc_2000 %>%
-  mutate(start_date_2000 = ymd(start_date_2000), end_date_2000 = ymd(end_date_2000)) %>%
   filter(start_date_2000 >= (start_date_2000 - days(1)) & end_date_2000 <= (end_date_2000 + days(1)))
 #this seems to have worked
 #Maybe get Adam to look at this and see if he thinks it worked. 
@@ -175,11 +292,11 @@ for (i in 1:nrow(overlapping_nests_2000)) {
 
 #filter for only nests that have Fate = Success or Failed
 filtered_dist_nn_2000 <- overlapping_nests_2000$dist_nn_2000[which(all_sp_2000$Fate %in% c("success", "failed"))]
-View(filtered_dist_nn_2000)
 #This worked! filtered_dist_nn_2000 has the distances to the nearest neighbour in meters
 # Add nearest neighbor as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
   mutate(nearest_neigh_dist = ifelse(year == "2000", filtered_dist_nn_2000, NA))
+
 
 
 
@@ -244,7 +361,6 @@ all_sp_1998 <- all_sp_1998 %>%
 all_sp_1998$start_date_1998 <- lubridate::dmy(all_sp_1998$Mayfield_start_date..formula.)
 all_sp_1998$end_date_1998 <- lubridate::dmy(all_sp_1998$Mayfield_end.date..formula.)
 overlapping_nests_1998<- all_sp_1998 %>%
-  mutate(start_date_1998 = ymd(start_date_1998), end_date_2000 = ymd(end_date_1998)) %>%
   filter(start_date_1998 >= (start_date_1998 - days(1)) & end_date_1998 <= (end_date_1998 + days(1)))
 # Create a data matrix of the distances between each nest
 dist_1998 <- st_as_sf(x = overlapping_nests_1998, coords = c("Nest_location_Easting_WGS84_Dec_degree",
@@ -283,7 +399,6 @@ all_sp_1999 <- all_sp_1999 %>%
 all_sp_1999$start_date_1999 <- lubridate::dmy(all_sp_1999$Mayfield_start_date..formula.)
 all_sp_1999$end_date_1999 <- lubridate::dmy(all_sp_1999$Mayfield_end.date..formula.)
 overlapping_nests_1999 <- all_sp_1999 %>%
-  mutate(start_date_1999 = ymd(start_date_1999), end_date_1999 = ymd(end_date_1999)) %>%
   filter(start_date_1999 >= (start_date_1999 - days(1)) & end_date_1999 <= (end_date_1999 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -324,7 +439,6 @@ all_sp_2001 <- all_sp_2001 %>%
 all_sp_2001$start_date_2001 <- lubridate::dmy(all_sp_2001$Mayfield_start_date..formula.)
 all_sp_2001$end_date_2001 <- lubridate::dmy(all_sp_2001$Mayfield_end.date..formula.)
 overlapping_nests_2001 <- all_sp_2001 %>%
-  mutate(start_date_2001 = ymd(start_date_2001), end_date_2001 = ymd(end_date_2001)) %>%
   filter(start_date_2001 >= (start_date_2001 - days(1)) & end_date_2001 <= (end_date_2001 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -367,7 +481,6 @@ all_sp_2002 <- all_sp_2002 %>%
 all_sp_2002$start_date_2002 <- lubridate::dmy(all_sp_2002$Mayfield_start_date..formula.)
 all_sp_2002$end_date_2002 <- lubridate::dmy(all_sp_2002$Mayfield_end.date..formula.)
 overlapping_nests_2002 <- all_sp_2002 %>%
-  mutate(start_date_2002 = ymd(start_date_2002), end_date_2002 = ymd(end_date_2002)) %>%
   filter(start_date_2002 >= (start_date_2002 - days(1)) & end_date_2002 <= (end_date_2002 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -409,7 +522,6 @@ all_sp_2003 <- all_sp_2003 %>%
 all_sp_2003$start_date_2003 <- lubridate::dmy(all_sp_2003$Mayfield_start_date..formula.)
 all_sp_2003$end_date_2003 <- lubridate::dmy(all_sp_2003$Mayfield_end.date..formula.)
 overlapping_nests_2003 <- all_sp_2003 %>%
-  mutate(start_date_2003 = ymd(start_date_2003), end_date_2003 = ymd(end_date_2003)) %>%
   filter(start_date_2003 >= (start_date_2003 - days(1)) & end_date_2003 <= (end_date_2003 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -451,7 +563,6 @@ all_sp_2004 <- all_sp_2004 %>%
 all_sp_2004$start_date_2004 <- lubridate::dmy(all_sp_2004$Mayfield_start_date..formula.)
 all_sp_2004$end_date_2004 <- lubridate::dmy(all_sp_2004$Mayfield_end.date..formula.)
 overlapping_nests_2004 <- all_sp_2004 %>%
-  mutate(start_date_2004 = ymd(start_date_2004), end_date_2004 = ymd(end_date_2004)) %>%
   filter(start_date_2004 >= (start_date_2004 - days(1)) & end_date_2004 <= (end_date_2004 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -493,7 +604,6 @@ all_sp_2005 <- all_sp_2005 %>%
 all_sp_2005$start_date_2005 <- lubridate::dmy(all_sp_2005$Mayfield_start_date..formula.)
 all_sp_2005$end_date_2005 <- lubridate::dmy(all_sp_2005$Mayfield_end.date..formula.)
 overlapping_nests_2005 <- all_sp_2005 %>%
-  mutate(start_date_2005 = ymd(start_date_2005), end_date_2005 = ymd(end_date_2005)) %>%
   filter(start_date_2005 >= (start_date_2005 - days(1)) & end_date_2005 <= (end_date_2005 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -535,7 +645,6 @@ all_sp_2006 <- all_sp_2006 %>%
 all_sp_2006$start_date_2006 <- lubridate::dmy(all_sp_2006$Mayfield_start_date..formula.)
 all_sp_2006$end_date_2006 <- lubridate::dmy(all_sp_2006$Mayfield_end.date..formula.)
 overlapping_nests_2006 <- all_sp_2006 %>%
-  mutate(start_date_2006 = ymd(start_date_2006), end_date_2006 = ymd(end_date_2006)) %>%
   filter(start_date_2006 >= (start_date_2006 - days(1)) & end_date_2006 <= (end_date_2006 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -577,7 +686,6 @@ all_sp_2007 <- all_sp_2007 %>%
 all_sp_2007$start_date_2007 <- lubridate::dmy(all_sp_2007$Mayfield_start_date..formula.)
 all_sp_2007$end_date_2007 <- lubridate::dmy(all_sp_2007$Mayfield_end.date..formula.)
 overlapping_nests_2007 <- all_sp_2007 %>%
-  mutate(start_date_2007 = ymd(start_date_2007), end_date_2007 = ymd(end_date_2007)) %>%
   filter(start_date_2007 >= (start_date_2007 - days(1)) & end_date_2007 <= (end_date_2007 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -619,7 +727,6 @@ all_sp_2008 <- all_sp_2008 %>%
 all_sp_2008$start_date_2008 <- lubridate::dmy(all_sp_2008$Mayfield_start_date..formula.)
 all_sp_2008$end_date_2008 <- lubridate::dmy(all_sp_2008$Mayfield_end.date..formula.)
 overlapping_nests_2008 <- all_sp_2008 %>%
-  mutate(start_date_2008 = ymd(start_date_2008), end_date_2008 = ymd(end_date_2008)) %>%
   filter(start_date_2008 >= (start_date_2008 - days(1)) & end_date_2008 <= (end_date_2008 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -661,7 +768,6 @@ all_sp_2009 <- all_sp_2009 %>%
 all_sp_2009$start_date_2009 <- lubridate::dmy(all_sp_2009$Mayfield_start_date..formula.)
 all_sp_2009$end_date_2009 <- lubridate::dmy(all_sp_2009$Mayfield_end.date..formula.)
 overlapping_nests_2009 <- all_sp_2009 %>%
-  mutate(start_date_2009 = ymd(start_date_2009), end_date_2009 = ymd(end_date_2009)) %>%
   filter(start_date_2009 >= (start_date_2009 - days(1)) & end_date_2009 <= (end_date_2009 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -704,7 +810,6 @@ all_sp_2010 <- all_sp_2010 %>%
 all_sp_2010$start_date_2010 <- lubridate::dmy(all_sp_2010$Mayfield_start_date..formula.)
 all_sp_2010$end_date_2010 <- lubridate::dmy(all_sp_2010$Mayfield_end.date..formula.)
 overlapping_nests_2010 <- all_sp_2010 %>%
-  mutate(start_date_2010 = ymd(start_date_2010), end_date_2010 = ymd(end_date_2010)) %>%
   filter(start_date_2010 >= (start_date_2010 - days(1)) & end_date_2010 <= (end_date_2010 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -746,7 +851,6 @@ all_sp_2011 <- all_sp_2011 %>%
 all_sp_2011$start_date_2011 <- lubridate::dmy(all_sp_2011$Mayfield_start_date..formula.)
 all_sp_2011$end_date_2011 <- lubridate::dmy(all_sp_2011$Mayfield_end.date..formula.)
 overlapping_nests_2011 <- all_sp_2011 %>%
-  mutate(start_date_2011 = ymd(start_date_2011), end_date_2011 = ymd(end_date_2011)) %>%
   filter(start_date_2011 >= (start_date_2011 - days(1)) & end_date_2011 <= (end_date_2011 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -789,7 +893,6 @@ all_sp_2012 <- all_sp_2012 %>%
 all_sp_2012$start_date_2012 <- lubridate::dmy(all_sp_2012$Mayfield_start_date..formula.)
 all_sp_2012$end_date_2012 <- lubridate::dmy(all_sp_2012$Mayfield_end.date..formula.)
 overlapping_nests_2012 <- all_sp_2012 %>%
-  mutate(start_date_2012 = ymd(start_date_2012), end_date_2012 = ymd(end_date_2012)) %>%
   filter(start_date_2012 >= (start_date_2012 - days(1)) & end_date_2012 <= (end_date_2012 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -822,17 +925,17 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 # Density for the year 2013
 all_sp_2013 <- east_bay_only_data %>%
   filter(year == "2013")
-all_sp_2013$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2013$Nest_location_Northing_WGS84_Dec_degree)
+all_sp_2013$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2013$Nest_location_northing_WGS84_Dec_degree)
 all_sp_2013$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2013$Nest_location_Easting_WGS84_Dec_degree)
 all_sp_2013 <- all_sp_2013 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
+str(all_sp_2013)
 # Filter the nests that overlap for at least 1 day
-all_sp_2013$start_date_2013 <- lubridate::dmy(all_sp_2013$Mayfield_start_date_formula)
-all_sp_2013$end_date_2013 <- lubridate::dmy(all_sp_2013$Mayfield_end_date_formula)
+all_sp_2013$start_date_2013 <- lubridate::dmy(all_sp_2013$Mayfield_start_date..formula)
+all_sp_2013$end_date_2013 <- lubridate::dmy(all_sp_2013$Mayfield_end.date..formula)
 overlapping_nests_2013 <- all_sp_2013 %>%
-  mutate(start_date_2013 = ymd(start_date_2013), end_date_2013 = ymd(end_date_2013)) %>%
   filter(start_date_2013 >= (start_date_2013 - days(1)) & end_date_2013 <= (end_date_2013 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -865,17 +968,16 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 # Density for the year 2014
 all_sp_2014 <- east_bay_only_data %>%
   filter(year == "2014")
-all_sp_2014$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2014$Nest_location_Northing_WGS84_Dec_degree)
+all_sp_2014$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2014$Nest_location_northing_WGS84_Dec_degree)
 all_sp_2014$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2014$Nest_location_Easting_WGS84_Dec_degree)
 all_sp_2014 <- all_sp_2014 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
 # Filter the nests that overlap for at least 1 day
-all_sp_2014$start_date_2014 <- lubridate::dmy(all_sp_2014$Mayfield_start_date_formula)
-all_sp_2014$end_date_2014 <- lubridate::dmy(all_sp_2014$Mayfield_end_date_formula)
+all_sp_2014$start_date_2014 <- lubridate::dmy(all_sp_2014$Mayfield_start_date..formula)
+all_sp_2014$end_date_2014 <- lubridate::dmy(all_sp_2014$Mayfield_end.date..formula)
 overlapping_nests_2014 <- all_sp_2014 %>%
-  mutate(start_date_2014 = ymd(start_date_2014), end_date_2014 = ymd(end_date_2014)) %>%
   filter(start_date_2014 >= (start_date_2014 - days(1)) & end_date_2014 <= (end_date_2014 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -908,17 +1010,16 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 # Density for the year 2015
 all_sp_2015 <- east_bay_only_data %>%
   filter(year == "2015")
-all_sp_2015$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2015$Nest_location_Northing_WGS84_Dec_degree)
+all_sp_2015$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2015$Nest_location_northing_WGS84_Dec_degree)
 all_sp_2015$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2015$Nest_location_Easting_WGS84_Dec_degree)
 all_sp_2015 <- all_sp_2015 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
 # Filter the nests that overlap for at least 1 day
-all_sp_2015$start_date_2015 <- lubridate::dmy(all_sp_2015$Mayfield_start_date_formula)
-all_sp_2015$end_date_2015 <- lubridate::dmy(all_sp_2015$Mayfield_end_date_formula)
+all_sp_2015$start_date_2015 <- lubridate::dmy(all_sp_2015$Mayfield_start_date..formula)
+all_sp_2015$end_date_2015 <- lubridate::dmy(all_sp_2015$Mayfield_end.date..formula)
 overlapping_nests_2015 <- all_sp_2015 %>%
-  mutate(start_date_2015 = ymd(start_date_2015), end_date_2015 = ymd(end_date_2015)) %>%
   filter(start_date_2015 >= (start_date_2015 - days(1)) & end_date_2015 <= (end_date_2015 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -951,17 +1052,16 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 # Density for the year 2016
 all_sp_2016 <- east_bay_only_data %>%
   filter(year == "2016")
-all_sp_2016$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2016$Nest_location_Northing_WGS84_Dec_degree)
+all_sp_2016$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2016$Nest_location_northing_WGS84_Dec_degree)
 all_sp_2016$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2016$Nest_location_Easting_WGS84_Dec_degree)
 all_sp_2016 <- all_sp_2016 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
 # Filter the nests that overlap for at least 1 day
-all_sp_2016$start_date_2016 <- lubridate::dmy(all_sp_2016$Mayfield_start_date_formula)
-all_sp_2016$end_date_2016 <- lubridate::dmy(all_sp_2016$Mayfield_end_date_formula)
+all_sp_2016$start_date_2016 <- lubridate::dmy(all_sp_2016$Mayfield_start_date..formula)
+all_sp_2016$end_date_2016 <- lubridate::dmy(all_sp_2016$Mayfield_end.date..formula)
 overlapping_nests_2016 <- all_sp_2016 %>%
-  mutate(start_date_2016 = ymd(start_date_2016), end_date_2016 = ymd(end_date_2016)) %>%
   filter(start_date_2016 >= (start_date_2016 - days(1)) & end_date_2016 <= (end_date_2016 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -993,17 +1093,16 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 # Density for the year 2017
 all_sp_2017 <- east_bay_only_data %>%
   filter(year == "2017")
-all_sp_2017$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2017$Nest_location_Northing_WGS84_Dec_degree)
+all_sp_2017$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2017$Nest_location_northing_WGS84_Dec_degree)
 all_sp_2017$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2017$Nest_location_Easting_WGS84_Dec_degree)
 all_sp_2017 <- all_sp_2017 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
 # Filter the nests that overlap for at least 1 day
-all_sp_2017$start_date_2017 <- lubridate::dmy(all_sp_2017$Mayfield_start_date_formula)
-all_sp_2017$end_date_2017 <- lubridate::dmy(all_sp_2017$Mayfield_end_date_formula)
+all_sp_2017$start_date_2017 <- lubridate::dmy(all_sp_2017$Mayfield_start_date..formula)
+all_sp_2017$end_date_2017 <- lubridate::dmy(all_sp_2017$Mayfield_end.date..formula)
 overlapping_nests_2017 <- all_sp_2017 %>%
-  mutate(start_date_2017 = ymd(start_date_2017), end_date_2017 = ymd(end_date_2017)) %>%
   filter(start_date_2017 >= (start_date_2017 - days(1)) & end_date_2017 <= (end_date_2017 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -1035,17 +1134,16 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 # Density for the year 2018
 all_sp_2018 <- east_bay_only_data %>%
   filter(year == "2018")
-all_sp_2018$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2018$Nest_location_Northing_WGS84_Dec_degree)
+all_sp_2018$Nest_location_northing_WGS84_Dec_degree <- as.numeric(all_sp_2018$Nest_location_northing_WGS84_Dec_degree)
 all_sp_2018$Nest_location_Easting_WGS84_Dec_degree <- as.numeric(all_sp_2018$Nest_location_Easting_WGS84_Dec_degree)
 all_sp_2018 <- all_sp_2018 %>%
   filter(!is.na(Nest_location_Easting_WGS84_Dec_degree),
          !is.na(Nest_location_northing_WGS84_Dec_degree))
 
 # Filter the nests that overlap for at least 1 day
-all_sp_2018$start_date_2018 <- lubridate::dmy(all_sp_2018$Mayfield_start_date_formula)
-all_sp_2018$end_date_2018 <- lubridate::dmy(all_sp_2018$Mayfield_end_date_formula)
+all_sp_2018$start_date_2018 <- lubridate::dmy(all_sp_2018$Mayfield_start_date..formula)
+all_sp_2018$end_date_2018 <- lubridate::dmy(all_sp_2018$Mayfield_end.date..formula)
 overlapping_nests_2018 <- all_sp_2018 %>%
-  mutate(start_date_2018 = ymd(start_date_2018), end_date_2018 = ymd(end_date_2018)) %>%
   filter(start_date_2018 >= (start_date_2018 - days(1)) & end_date_2018 <= (end_date_2018 + days(1)))
 
 # Create a data matrix of the distances between each nest
@@ -1070,7 +1168,13 @@ filtered_dens_2018 <- dens_50m_2018[which(overlapping_nests_2018$Fate %in% c("su
 # Add the density as a new column to the original dataframe
 clean_nest_fate_data <- clean_nest_fate_data %>%
   mutate(density_50m = ifelse(year == "2018", filtered_dens_2018, density_50m))
-
+#scale my density variable
+clean_nest_fate_data$density_50m_scaled<-scale(clean_nest_fate_data$density_50m)
+density_mean_scaled<-mean(clean_nest_fate_data$density_50m_scaled)
+dens_sd_scaled<-sd(clean_nest_fate_data$density_50m_scaled)
+print(density_mean_scaled)
+print(dens_sd_scaled)
+#the mean is basically 0 and the sd is exactly 1 -- I think that's okay
 #______________________________________________________________________________
 
 #let's try binding these utm coordinates together
@@ -1086,25 +1190,34 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 
 
 
-### removing nests with NA values in the start and end dates and the eggs_hatched column
+### removing nests with NA values in the covariates
 clean_nest_fate_data <- clean_nest_fate_data %>%
   filter(!is.na(start_date_ordinal),
          !is.na(end_date_ordinal),
          !is.na(density_50m),
-         !is.na(snow_per))
-
+         !is.na(snow_per),
+         !is.na(density_50m_scaled),
+         !is.na(snow_per_scaled))
+str(clean_nest_fate_data)
 range(clean_nest_fate_data$density_50m)
 range(clean_nest_fate_data$start_date_ordinal)
 range(clean_nest_fate_data$end_date_ordinal)
-range(clean_nest_fate_data$snow_per)
 # [1]  14 128 ## the 128 is because of an error in the end date -- apparently the nest end_date is october 6, 1952!
-hist(clean_nest_fate_data$end_date_ordinal)
 ## other than that one value all others are less than 60
+clean_nest_fate_data <- clean_nest_fate_data %>%
+  filter(end_date_ordinal < 60)
+#mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
 
-#clean_nest_fate_data <- clean_nest_fate_data %>%
- # filter(end_date_ordinal < 60) %>%
-  #mutate(eggs_hatched_scaled = as.numeric(scale(eggs_hatched))) # scaling the predictor (mean = 0, sd = 1)
-#DO I WANT TO SCALE MY DENSITY AND SNOW_PER VARIABLE??
+range(clean_nest_fate_data$snow_per)
+range(clean_nest_fate_data$density_50m_scaled)
+range(clean_nest_fate_data$snow_per_scaled)
+hist(clean_nest_fate_data$snow_per_scaled) #heavily right skewed - is this okay?
+hist(clean_nest_fate_data$density_50m_scaled) #heavily right skewed - is this okay?
+hist(clean_nest_fate_data$end_date_ordinal)
+
+
+
+  
 
 maxage <- max(clean_nest_fate_data$end_date_ordinal)
 nNests <- nrow(clean_nest_fate_data)
@@ -1135,7 +1248,6 @@ length(which(ndays_df - ndays_matrix != 0))
 ## there are some where this calculation doesn't match up.
 ## worth checking why for the ~ 120 or so nests.
 
-
 #this code is to check why there are mismatches
 differences<- ndays_df - ndays_matrix !=0
 mismatched_data <- clean_nest_fate_data[differences, ]
@@ -1158,22 +1270,30 @@ mismatched_values <- data.frame(
 
 
 ## Stan requires a named list as a data object
-
-  stan_data <- list(Nnests = nNests,
-                    first_day_as_int_days = clean_nest_fate_data$start_date_ordinal,
-                    last_day_as_int_days = clean_nest_fate_data$end_date_ordinal,
-                    maxage = maxage,
-                    y = y,
-                    density_50m = clean_nest_fate_data$density_50m,
-                    snow_per=clean_nest_fate_data$snow_per)
+#this was not working with my scaled variables -- want to figure this out. 
+#stan_data <- list(Nnests = nNests,
+ #                 first_day_as_int_days = clean_nest_fate_data$start_date_ordinal,
+  #                last_day_as_int_days = clean_nest_fate_data$end_date_ordinal,
+   #               maxage = maxage,
+    #              y = y,
+     #             density_50m_scaled = clean_nest_fate_data$density_50m_scaled,
+      #            snow_per_scaled=clean_nest_fate_data$snow_per_scaled)
+stan_data <- list(Nnests = nNests,
+                  first_day_as_int_days = clean_nest_fate_data$start_date_ordinal,
+                  last_day_as_int_days = clean_nest_fate_data$end_date_ordinal,
+                  maxage = maxage,
+                  y = y,
+                  density_50m = clean_nest_fate_data$density_50m,
+                  snow_per=clean_nest_fate_data$snow_per)
 
 
 
 str(stan_data)
 
 
+
 #now save this as an .rds
-saveRDS(stan_data, "stan_data_list.rds")
+saveRDS(stan_data, "stan_data_list_50m.rds")
 
 
 
