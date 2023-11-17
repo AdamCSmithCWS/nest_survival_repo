@@ -1,5 +1,5 @@
 #run stan model like tobias roth
-setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo")
+#setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research project/nest_survival_repo")
 
 # library(rstan)
 #
@@ -16,6 +16,7 @@ setwd("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research proj
 #
 
 stan_data <- readRDS("stan_data_list_50m.rds")
+stan_data[["use_likelihood"]] <- 1 #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
 
 ## try cmdstanr: https://mc-stan.org/cmdstanr/articles/cmdstanr.html
 library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and it gives nicer error messages

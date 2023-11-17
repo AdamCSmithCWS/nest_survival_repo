@@ -12,9 +12,8 @@ data {
 parameters {
   vector[3] b; // I only need two priors right? because I have two predictors
 }
-
-model {
-  array[Nnests, maxage-1]real S; //survival probability
+transformed parameters {
+    array[Nnests, maxage-1]real S; //survival probability
 
   for(i in 1:Nnests){
     for(t in first_day_as_int_days[i]: (last_day_as_int_days[i]-1)){
@@ -22,6 +21,9 @@ model {
     }
   }
 
+}
+model {
+  
   //priors
   b ~ normal(0,1);
   
@@ -41,7 +43,7 @@ generated quantities {
   // vector[Nnests] surv_pred;
   vector[3] survival_overall_pred;
   real diff_survival;
-  
+  array[Nnests, maxage]int<lower=0, upper=1> y_rep;
   // for(i in 1:Nnests){
   //  surv_pred[i] = inv_logit(b[1] + b[2]*density_50m[i] +b[3]*snow_per[i]);
   // }
@@ -52,6 +54,12 @@ generated quantities {
   
   diff_survival = survival_overall_pred[3] - survival_overall_pred[1];
   
+  for(i in 1:Nnests) {
+
+    for (t in (first_day_as_int_days [i] +1): last_day_as_int_days [i]){
+      y_rep[i,t] =bernoulli_rng(y[i,t-1]*S[i,t-1]);
+    }
+  }
   
 }
 
