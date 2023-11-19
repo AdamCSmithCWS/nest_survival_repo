@@ -33,6 +33,11 @@ run_stan_model_like_tobias<- mod_prep$sample(data=stan_data,
                                              parallel_chains = 4)#just for initial attempts, but use the defaults when running for real - default = 4
 
 summ_model <- run_stan_model_like_tobias$summary()
+
+### drop all non-estimated parameters (i.e., y_rep values that are not estimated, but fixed at 2 or 0)
+summ_model <- summ_model %>% 
+  filter(!is.na(rhat))
+
 View(summ_model)
 
 
