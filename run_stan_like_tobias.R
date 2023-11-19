@@ -16,7 +16,10 @@
 #
 
 stan_data <- readRDS("stan_data_list_50m.rds")
-stan_data[["use_likelihood"]] <- 1 #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
+stan_data[["use_likelihood"]] <- as.integer(1) #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
+
+stan_data[["snow_per"]] <- as.numeric(scale(stan_data[["snow_per"]], scale = TRUE, center = FALSE))
+stan_data[["density_50m"]] <- as.numeric(scale(stan_data[["density_50m"]], scale = TRUE, center = FALSE))
 
 ## try cmdstanr: https://mc-stan.org/cmdstanr/articles/cmdstanr.html
 library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and it gives nicer error messages
