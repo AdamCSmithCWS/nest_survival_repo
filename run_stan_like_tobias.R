@@ -16,7 +16,10 @@
 #
 
 stan_data <- readRDS("stan_data_list_50m.rds")
-stan_data[["use_likelihood"]] <- 1 #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
+stan_data[["use_likelihood"]] <- as.integer(1) #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
+
+stan_data[["snow_per"]] <- as.numeric(scale(stan_data[["snow_per"]], scale = TRUE, center = FALSE))
+stan_data[["density_50m"]] <- as.numeric(scale(stan_data[["density_50m"]], scale = TRUE, center = FALSE))
 
 ## try cmdstanr: https://mc-stan.org/cmdstanr/articles/cmdstanr.html
 library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and it gives nicer error messages
@@ -30,6 +33,11 @@ run_stan_model_like_tobias<- mod_prep$sample(data=stan_data,
                                              parallel_chains = 4)#just for initial attempts, but use the defaults when running for real - default = 4
 
 summ_model <- run_stan_model_like_tobias$summary()
+
+### drop all non-estimated parameters (i.e., y_rep values that are not estimated, but fixed at 2 or 0)
+summ_model <- summ_model %>% 
+  filter(!is.na(rhat))
+
 View(summ_model)
 
 
