@@ -45,7 +45,7 @@ generated quantities {
   // vector[Nnests] surv_pred;
   vector[3] survival_overall_pred;
   real diff_survival;
-  array[Nnests, maxage]int<lower=0,upper=1> y_rep;
+  array[Nnests, maxage]int<lower=0,upper=2> y_rep;
   // for(i in 1:Nnests){
   //  surv_pred[i] = inv_logit(b[1] + b[2]*density_50m[i] +b[3]*snow_per[i]);
   // }
@@ -58,7 +58,7 @@ generated quantities {
   
   for(i in 1:Nnests) {
     for (t in 1:first_day_as_int_days [i]){
-      y_rep[i,t] = 0;
+      y_rep[i,t] = 2;
     }
   y_rep[i,first_day_as_int_days[i]] = 1;
     for (t in (first_day_as_int_days [i] +1): last_day_as_int_days [i]){
