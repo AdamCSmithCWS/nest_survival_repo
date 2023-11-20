@@ -44,3 +44,23 @@ View(summ_model)
 library(boot)
 inv.logit(0.009489755)#for density (b2) #this may change as my model changes
 
+
+library(bayesplot)
+library(ggplot2)
+library(rstanarm)
+#Posterior predictive checks
+#graph the results and then simulate data to see if they are similar to the results
+y<-run_stan_model_like_tobias$y
+
+#trying the function cehck_predictions
+ppc_bars(
+  y,
+  y_rep,
+  prob = 0.9,
+  width = 0.9,
+  size = 1,
+  fatten = 2.5,
+  freq = TRUE
+)
+
+
