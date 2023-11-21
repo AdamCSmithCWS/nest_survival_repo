@@ -20,7 +20,7 @@ east_bay_only_data <- subset(all_data, site== "East Bay Mainland")
 #my response variable is nest fate (success or failed):
 #so I need to clean that variable -- remove unknowns
 
-clean_nest_fate_data <- east_bay_only_data %>% # two assignment "<-" operators doesn't make sense
+clean_nest_fate_data <- east_bay_only_data %>%
   filter(Fate %in% c("success", "failed"))
 
 # # suggest you move this number of nest calculation to the end, after you've prepared all other variables
@@ -189,6 +189,7 @@ for (i in 1:(nrow(east_bay_only_data) - 1)) {
   }
 }
 View(nests_overlap_matrix)
+str(nests_overlap_matrix)
 #This worked!! So my density calculations and stuff should work for the entire dataset. 
 #I don't have to separate by year anymore
 
@@ -208,6 +209,7 @@ sf_nest_data <- nest_data %>%
 #Now I identify which nests are overlapping:
 overlapping_nests<-which(nests_overlap_matrix == 1, arr.ind=TRUE)
 str(overlapping_nests)
+
 #overlapping_nests is an array of every point that is a 1 in my nests_overlap_matrix
 overlapping_nest_data<-sf_nest_data[overlapping_nests[, 1], ]
 overlapping_nest_data$near_neigh<-st_nearest_feature(overlapping_nest_data, sf_nest_data)
@@ -223,7 +225,6 @@ View(sf_nest_data)
 #so output [1] 2) indicates that the nearest neighbor for the first row in overlapping_nest_data is the second row in
 #the original sf_nest_data. Similarly, the second value ([2] 3) indicates that the nearest neighbor for the second row in overlapping_nest_data is the third row in the original sf_nest_data, and so on.
 
-
 # Create an empty column to store distances
 overlapping_nest_data$dist_nn <- NA
 
@@ -234,6 +235,30 @@ for (i in 1:nrow(overlapping_nest_data)) {
   distance_near_neigh <- st_distance(overlapping_nest_data[i, ], overlapping_nest_data[nearest_neighbor_index, ])
   overlapping_nest_data$dist_nn[i] <- distance_near_neigh
 }
+
+
+#trying again
+##trying to do this quickly -- this didn't work it took over an hour
+#empty list to store results
+nearest_neighbours_list <- list()
+
+for (k in 1:nrow(overlapping_nests)) {
+  i<- overlapping_nests[k, 1]
+  j <- overlapping_nests[k, 2]
+  
+  #find the nearest neighbour for nests
+  nearest_neighbour_east_bay<- st_nearest_feature(sf_nest_data[c(i,j), ], sf_nest_data)
+  
+  nearest_neighbours_list[[k]] <- nearest_neighbour_east_bay
+}
+
+near_neigh_df <- do.call(rbind, nearest_neighbours_list)
+str(near_neigh_df)
+#this didn't work it made something that's 146202 long
+#so I don't think it's identifying the nearest nest
+#also it took over an hour to compute. 
+##
+
 
 #filter for only nests that have Fate = Success or Failed
 filtered_dist_nn <- overlapping_nest_data$dist_nn[which(nest_data$Fate %in% c("success", "failed"))]
