@@ -152,47 +152,60 @@ range(clean_nest_fate_data$snow_per_scaled) #includes NA at this point so range 
 #_________________________________________________________________________________________
 #filter the nests that overlap for at least 1 day
 # Function to check overlap
-overlap_check <- function(start1, end1, start2, end2) {
-  return(as.Date(start1, format="%d-%b-%Y") <= as.Date(end2, format="%d-%b-%Y") & as.Date(end1, format="%d-%b-%Y") >= as.Date(start2, format="%d-%b-%Y"))
-}
-#This didn't work with the start_date and end_date we made earlier
-# Create an empty matrix
-#nest_overlap_matrix <- matrix(0, nrow = nrow(clean_nest_fate_data), ncol = nrow(clean_nest_fate_data))
-
-# Loop through each pair of nests and check for overlap
-#for (i in 1:(nrow(clean_nest_fate_data) - 1)) {
- # for (j in (i + 1):nrow(clean_nest_fate_data)) {
-  #  nests_overlap_matrix[i, j] <- overlap_check(
-   #   clean_nest_fate_data$start_date[i],
-    #  clean_nest_fate_data$end_date[i],
-     # clean_nest_fate_data$start_date[j],
-      #clean_nest_fate_data$end_date[j]
-    #)
-    #nest_overlap_matrix[j, i] <- nest_overlap_matrix[i, j]  # Since the matrix is symmetric
-  #}
+#overlap_check <- function(start1, end1, start2, end2) {
+#  return(as.Date(start1, format="%d-%b-%Y") <= as.Date(end2, format="%d-%b-%Y") & as.Date(end1, format="%d-%b-%Y") >= as.Date(start2, format="%d-%b-%Y"))
 #}
 
-#trying it this way
 # Create an empty matrix
-nests_overlap_matrix <- matrix(0, nrow = nrow(east_bay_only_data), ncol = nrow(east_bay_only_data))
+#nests_overlap_matrix <- matrix(0, nrow = nrow(east_bay_only_data), ncol = nrow(east_bay_only_data))
 
 # Loop through each pair of nests and check for overlap
-for (i in 1:(nrow(east_bay_only_data) - 1)) {
-  for (j in (i + 1):nrow(east_bay_only_data)) {
-    nests_overlap_matrix[i, j] <- overlap_check(
-      clean_nest_fate_data$Mayfield_start_date..formula.[i],
-      clean_nest_fate_data$Mayfield_end.date..formula.[i],
-      clean_nest_fate_data$Mayfield_start_date..formula.[j],
-      clean_nest_fate_data$Mayfield_end.date..formula.[j]
-      )
-    nests_overlap_matrix[j, i] <- nests_overlap_matrix[i, j]  # Since the matrix is symmetric
-  }
-}
-View(nests_overlap_matrix)
-str(nests_overlap_matrix)
+#for (i in 1:(nrow(east_bay_only_data) - 1)) {
+#  for (j in (i + 1):nrow(east_bay_only_data)) {
+#    nests_overlap_matrix[i, j] <- overlap_check(
+#      clean_nest_fate_data$Mayfield_start_date..formula.[i],
+#      clean_nest_fate_data$Mayfield_end.date..formula.[i],
+#      clean_nest_fate_data$Mayfield_start_date..formula.[j],
+#      clean_nest_fate_data$Mayfield_end.date..formula.[j]
+#      )
+#    nests_overlap_matrix[j, i] <- nests_overlap_matrix[i, j]  # Since the matrix is symmetric
+#  }
+#}
+#View(nests_overlap_matrix)
+#saveRDS(nests_overlap_matrix, file = "/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research_project/nest_survival_repo/nest_overlap_matrix.rds")
+nests_overlap_matrix<-readRDS("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research_project/nest_survival_repo/nest_overlap_matrix.rds")
 #This worked!! So my density calculations and stuff should work for the entire dataset. 
 #I don't have to separate by year anymore
 
+#a problem is going to be that the two matrices are different sizes because I filter out the NAs for the coordiantes
+#so when I make the distance matrix, it will be smaller than the nests_overlap_matrix
+
+
+#HOW I DO THIS IN THEORY
+
+#HEre's how to do it: Don't do the array thing:
+#make the matrix of all the distances between all the nests, then threshold it and make 0 and 1 matrix
+#then take the two matrices and see if the two conditions are true (under 50m and overlapping)
+#here's how you would do this:
+m1<-matrix(data=c(0,0,1,1),nrow=2) #matrix of overlapping
+m2<-matrix(data=c(1,0,1,0),nrow=2) #matrix of 0,1 = is the nest within the threshold distance?
+m3<-m1&m2
+m3
+#Then the number of "true" per row is the density within the threshold distance!
+#Here's the example:
+dist<-matrix(data=c(1,2,3,4),nrow=2) #matrix of distances between nests
+nearby<-dist<=2 #threshold the distance matrix (less than or equal to 2 =1, if not then 0)
+coincide<-matrix(data=c(0,1,1,1),nrow=2) #overlapping matrix
+both<-nearby & coincide
+nest_density_nearby<-apply(both,2,FUN=sum) #the sum function is your measure of density!
+
+#to find nearest neighbour
+#the both matrix would keep the distances and have NA if they don't overlap
+#and then search for the minumum distance of each column
+#then the column number would tell you what nest it is. 
+
+
+#trying this with my data
 #get rid of NAs
 nest_data<-east_bay_only_data
 nest_data$Nest_location_northing_WGS84_Dec_degree<-as.numeric(nest_data$Nest_location_northing_WGS84_Dec_degree)
@@ -206,10 +219,25 @@ sf_nest_data <- nest_data %>%
                       'Nest_location_northing_WGS84_Dec_degree')) %>%
   st_set_crs(4326)
 
+#Create the distances matrix
+distance_matrix_east_bay<-st_distance(sf_nest_data)
+View(distance_matrix_east_bay)
+#Check this against the distance matrix for the year 2000.
+#something very funky happens at row 51 of the distance_matrix_east_bay
+#perhaps it's because 1999 doesn't have coordiante data -- but I filtered out NAs
+
+threshold_distance<-50
+threshold_distance<- set_units(50, "m")
+exclude_zero<- 0
+exclude_zero<- set_units (0, "m")
+dens_50m_2000<-numeric (nrow(distance_matrix_2000))
+
+##________________________________________________________________________________
+#delete the stuff below once I get the above method working
+
 #Now I identify which nests are overlapping:
 overlapping_nests<-which(nests_overlap_matrix == 1, arr.ind=TRUE)
 str(overlapping_nests)
-
 #overlapping_nests is an array of every point that is a 1 in my nests_overlap_matrix
 overlapping_nest_data<-sf_nest_data[overlapping_nests[, 1], ]
 overlapping_nest_data$near_neigh<-st_nearest_feature(overlapping_nest_data, sf_nest_data)
@@ -259,6 +287,7 @@ str(near_neigh_df)
 #also it took over an hour to compute. 
 ##
 
+#________________________________________________________________________________________________
 
 #filter for only nests that have Fate = Success or Failed
 filtered_dist_nn <- overlapping_nest_data$dist_nn[which(nest_data$Fate %in% c("success", "failed"))]
@@ -331,6 +360,7 @@ clean_nest_fate_data <- clean_nest_fate_data %>%
 dist_2000<-st_as_sf(x=overlapping_nests_2000, coords = c("Nest_location_Easting_WGS84_Dec_degree",
                                                   "Nest_location_northing_WGS84_Dec_degree"), crs= "WGS84")
 distance_matrix_2000<-st_distance(dist_2000)
+View(distance_matrix_2000)
 
 threshold_distance<-50
 threshold_distance<- set_units(50, "m")
@@ -430,7 +460,7 @@ overlapping_nests_1999 <- all_sp_1999 %>%
 dist_1999 <- st_as_sf(x = overlapping_nests_1999, coords = c("Nest_location_Easting_WGS84_Dec_degree",
                                                              "Nest_location_northing_WGS84_Dec_degree"), crs = "WGS84")
 distance_matrix_1999 <- st_distance(dist_1999)
-
+View(distance_matrix_1999)
 threshold_distance <- 50
 threshold_distance <- set_units(50, "m")
 exclude_zero <- 0
