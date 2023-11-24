@@ -14,7 +14,7 @@
 #                                   warmup = 500,
 #                                   verbose = TRUE)
 #
-
+library(tidyverse)
 stan_data <- readRDS("stan_data_list_50m.rds")
 stan_data[["use_likelihood"]] <- as.integer(1) #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
 
