@@ -148,6 +148,7 @@ range(clean_nest_fate_data$snow_per_scaled) #includes NA at this point so range 
 #sd(clean_nest_fate_data$snow_per_scaled) #must drop NA's first for these to work
 
 
+
 #let's try density and nn again:
 #_________________________________________________________________________________________
 #filter the nests that overlap for at least 1 day
@@ -176,7 +177,7 @@ range(clean_nest_fate_data$snow_per_scaled) #includes NA at this point so range 
 nests_overlap_matrix<-readRDS("/Users/isaacfinkelstein/Documents/Carleton/courses/bayesian/research_project/nest_survival_repo/nest_overlap_matrix.rds")
 #This worked!! So my density calculations and stuff should work for the entire dataset. 
 #I don't have to separate by year anymore
-
+View(nest_overlap_matrix)
 #a problem is going to be that the two matrices are different sizes because I filter out the NAs for the coordiantes
 #so when I make the distance matrix, it will be smaller than the nests_overlap_matrix
 
