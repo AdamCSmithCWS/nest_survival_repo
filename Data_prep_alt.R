@@ -300,6 +300,15 @@ for(i in 1:nNests){
 }
 
 
+#predator indices 
+#foxes (sightings) and lemmings becuase the population of lemmings can effect what the foxes predate (they prefer lemmings if available)
+species_log<-read.csv("raw_data/specieslog_EBM_allyears.csv")
+obs_hours <- read.csv("raw_data/specieslog_observer_Effort_EBM_allyears.csv")
+
+#filter for just arctic foxes
+species_log_fox <- subset(species_log, species_code== "arctic fox")
+#so next create a loop that calculates the number of (fox sightings per day/the number of observer hours) *8
+#do the same thing for lemmings. 
 
 
 
