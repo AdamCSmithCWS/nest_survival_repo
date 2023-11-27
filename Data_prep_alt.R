@@ -307,7 +307,7 @@ obs_hours <- read.csv("raw_data/specieslog_observer_Effort_EBM_allyears.csv")
 
 #filter for just arctic foxes
 species_log_fox <- subset(species_log, species_code== "arctic fox")
-#so next create a loop that calculates the number of (fox sightings per day/the number of observer hours) *8
+#so next create a loop that calculates the number of ((fox sightings per day/the number of observer hours) *8)
 #do the same thing for lemmings. 
 
 
