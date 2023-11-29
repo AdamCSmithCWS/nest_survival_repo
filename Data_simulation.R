@@ -54,6 +54,11 @@ stan_data_sim <- stan_data_real
 stan_data_sim[["y"]] <- y_sim
 
 
+
+#  Then fit the model to the simulated data -------------------------------
+
+
+
 stan_data_sim[["use_likelihood"]] <- as.integer(1) #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
 
 library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and it gives nicer error messages
@@ -66,6 +71,9 @@ sim_model_fit <- mod_prep$sample(data=stan_data_sim,
                                              iter_warmup = 500, #default = 1000
                                              parallel_chains = 4)#just for initial attempts, but use the defaults when running for real - default = 4
 
-summ_model <- sim_model_fit$summary()
+
+#check to see if the estimated b parameters match the simulated 
+summ_model <- sim_model_fit$summary(variables = "b")
+
 
 
