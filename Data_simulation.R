@@ -9,7 +9,6 @@ Nnests <- stan_data_real$Nnests
 maxage <- stan_data_real$maxage
 
 first_day <- stan_data_real$first_day_as_int_days
-last_day <- stan_data_real$last_day_as_int_days
 
 
 density_50m <- stan_data_real$density_50m
@@ -38,9 +37,11 @@ for(i in 1:Nnests){
   ## first day has to == 1
   y_sim[i,first_day[i]] <- 1
   # for following days nest is active, simulate daily status
-  for(d in c((first_day[i]+1):last_day[i])){
-    if(y_sim[i,d-1] == 1){
-      y_sim[i,d] <- rbinom(1,1,s_sim[i])
+  for(d in c((first_day[i]+1):(first_day[i]+30))){ #setting the maximum last day as 30 days after the first day, because that is the maximum in teh real data
+    if(y_sim[i,d-1] == 1){ # if the simulated nest is still active sample
+      y_sim[i,d] <- rbinom(1,
+                           size = 1,
+                           prob = s_sim[i]) #binomial with size = 1 is the same as bernoulli (size = number of trials)
     }else{next}
   }
   
