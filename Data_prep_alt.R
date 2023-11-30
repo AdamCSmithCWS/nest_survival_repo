@@ -4,6 +4,7 @@
 library(tidyverse)
 library(sf)
 library(units)
+library(ggplot2)
 
 
 ## generate full dataset of shorebird nests with known fate
@@ -81,9 +82,8 @@ clean_nest_fate_data_shore_location <- clean_nest_fate_data_shore %>%
 ## two clumps of nests that are separated by ~ 1 degree longitude
 ## and one nest that is south of all others by ~ 1 degree latitude
 test_map <- ggplot(data = clean_nest_fate_data_shore_location) +
-  geom_sf()
+  geom_sf(aes(color=year))
 test_map
-
 
 ## adding snow data
 
@@ -173,7 +173,7 @@ nest_data_goose <- east_bay_only_data %>%
 ## this loop fills in the number of shorebird, gull, and goose nests
 ## that overlap in time and are within set distances of each nest
 threshold_distance_shore <- set_units(50, "m")
-threshold_distance_gull <- set_units(100, "m")
+threshold_distance_gull <- set_units(150, "m")
 threshold_distance_goose <- set_units(50, "m")
 ## the loop works, runs quickly, and personally I like that we know
 ## that the shorebird nest in question is always the same one
@@ -219,8 +219,6 @@ for(i in 1:nrow(clean_nest_fate_data_shore)){
   test
   
   }
-  
-  
   
   # gull nests that overlap in time
   gull_nest_over <- nest_data_gulls %>% 
@@ -304,12 +302,75 @@ for(i in 1:nNests){
 #foxes (sightings) and lemmings becuase the population of lemmings can effect what the foxes predate (they prefer lemmings if available)
 species_log<-read.csv("raw_data/specieslog_EBM_allyears.csv")
 obs_hours <- read.csv("raw_data/specieslog_observer_Effort_EBM_allyears.csv")
+#filter out the "Number of Observers" column and the year 2020 (no data because of pandemic)
+filtered_obs_hours <- obs_hours %>%
+  filter(log_type != "Number of Observers",
+         obsYear != 2020)
+
 
 #filter for just arctic foxes
 species_log_fox <- subset(species_log, species_code== "arctic fox")
-#so next create a loop that calculates the number of ((fox sightings per day/the number of observer hours) *8)
-#do the same thing for lemmings. 
+#the species log goes back to 1997, but the obs hours only goes back to 2004, also 2020 has no data (because of the pandemic)
+filtered_species_log_fox <- species_log_fox %>%
+  filter(obsYear >= 2004 & obsYear != 2020)
 
+#sum of foxes per year
+fox_sums <- rowSums(filtered_species_log_fox [, 5:72], na.rm = TRUE)
+filtered_species_log_fox$total_sum<-fox_sums
+#I calculated by hand a few rows by hand and yes, it worked.
+
+#sum of effort hours per year
+hours_sums <- rowSums(filtered_obs_hours[, 4:71], na.rm = TRUE)
+filtered_obs_hours$total_sum<-hours_sums
+#Yes, row 1 is correct
+
+#now divide by the sum of foxes per row by the sum of obs hours per row
+#I multiply by 8 to make it number of foxes per 8 hours -- following indices from lit
+#I don't think this matters though.
+fox_indice <- (filtered_species_log_fox$total_sum/filtered_obs_hours$total_sum)*8
+filtered_species_log_fox$fox_indice <- fox_indice
+
+# Visualize this
+ggplot(filtered_species_log_fox, aes(x = obsYear, y = fox_indice)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Scatter Plot of Fox Indice Over Years",
+       x = "Year",
+       y = "Fox Indice")
+#it seems the number of foxes increases over the years. That's interesting.
+#also a fairly wide variation between years
+
+#indice for lemmings
+#filter for just lemmings
+#for the years 2012-2021, they separate brown lemming and green collared lemming
+species_log_lemming <- subset(species_log, species_code %in% c("lemming", "brown lemming", "GC lemming"))
+#the species log goes back to 1997, but the obs hours only goes back to 2004, also 2020 has no data (because of the pandemic)
+filtered_species_log_lemming <- species_log_lemming %>%
+  filter(obsYear >= 2004 & obsYear != 2020)
+
+#sum of lemmings per year
+lemming_sums <- rowSums(filtered_species_log_lemming [, 5:72], na.rm = TRUE)
+filtered_species_log_lemming$total_sum<-lemming_sums
+#I calculated by hand a few rows by hand and yes, it worked.
+# combine the species of lemmings to make 1 lemmign count per year
+lemming_sum_aggregate<-aggregate(filtered_species_log_lemming$total_sum, list(filtered_species_log_lemming$obsYear), FUN = sum)
+#This worked. 
+#adding this beside the fox indice
+lemming_indice <- (lemming_sum_aggregate$x/filtered_obs_hours$total_sum)*8
+filtered_species_log_fox$lemming_indice <- lemming_indice
+#worked!
+
+# Visualize this
+ggplot(filtered_species_log_fox, aes(x = obsYear, y = lemming_indice)) +
+  geom_point(aes( y= lemming_indice, colour = "Lemming Indice")) +
+  geom_line(aes(y=lemming_indice, colour = "Lemming Indice")) +
+  geom_point(aes(y=fox_indice, colour = "Fox Indice")) +
+  geom_line(aes(y=fox_indice, colour = "Fox Indice")) +
+  labs(title = "Plot of Fox and Lemming Indices Over Years",
+       x = "Year",
+       y = "Number of sightings per 8 observer hours") +
+  scale_color_manual(values = c("Lemming Indice" = "skyblue", "Fox Indice" = "darkorange"))
+#cool, they are pretty directly inverted!!
 
 
 stan_data <- list(Nnests = nrow(clean_nest_fate_data_shore),
@@ -317,8 +378,8 @@ stan_data <- list(Nnests = nrow(clean_nest_fate_data_shore),
                   last_day_as_int_days = clean_nest_fate_data_shore$end_date_ordinal,
                   maxage = maxage,
                   y = y,
-                  density_50m = clean_nest_fate_data_shore$density_50m,
-                  snow_per=clean_nest_fate_data_shore$snow_per_scaled,
+                  density_50m = clean_nest_fate_data_shore$n_shore_nests_near,
+                  snow_per=as.numeric(clean_nest_fate_data_shore$snow_per_scaled),
                   density_goose = clean_nest_fate_data_shore$n_goose_nests_near,
                   density_gull = clean_nest_fate_data_shore$n_gull_nests_near)
 
