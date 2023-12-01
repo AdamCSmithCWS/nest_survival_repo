@@ -15,7 +15,7 @@
 #                                   verbose = TRUE)
 #
 library(tidyverse)
-stan_data <- readRDS("stan_data_list_50m.rds")
+stan_data <- readRDS("stan_data_list_all.rds")
 stan_data[["use_likelihood"]] <- as.integer(1) #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
 
 stan_data[["snow_per"]] <- as.numeric(scale(stan_data[["snow_per"]], scale = TRUE, center = FALSE))
@@ -52,7 +52,7 @@ library(rstanarm)
 #graph the results and then simulate data to see if they are similar to the results
 y<-run_stan_model_like_tobias$y
 
-#trying the function cehck_predictions
+#trying the function check_predictions
 ppc_bars(
   y,
   y_rep,

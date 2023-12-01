@@ -18,7 +18,7 @@ transformed parameters {
 
   for(i in 1:Nnests){
     //for(t in first_day_as_int_days[i]: (last_day_as_int_days[i]-1)){
-      S[i] = inv_logit(b[1] + b[2]*density_50m[i] + b[3]*snow_per[i]); // I haven't done b[3]*age[t] here!
+      S[i] = inv_logit(b[1] + b[2]*density_50m[i] + b[3]*snow_per[i]);
     //}
   }
 }
@@ -27,7 +27,7 @@ transformed parameters {
 model {
   
   //priors
-  b ~ normal(0,1);
+  b ~ normal(0,0.1);
   
   //likelihood
   if(use_likelihood){

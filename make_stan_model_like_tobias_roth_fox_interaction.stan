@@ -24,7 +24,7 @@ model {
   }
 
   //priors
-  beta_nest ~ normal(0,1); //
+  beta_nest ~ normal(0,0.1); //
   
 
   //likelihood
