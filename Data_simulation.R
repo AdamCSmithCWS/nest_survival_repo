@@ -37,7 +37,7 @@ for(i in 1:Nnests){
   ## first day has to == 1
   y_sim[i,first_day[i]] <- 1
   # for following days nest is active, simulate daily status
-  for(d in c((first_day[i]+1):(first_day[i]+30))){ #setting the maximum last day as 30 days after the first day, because that is the maximum in teh real data
+  for(d in c((first_day[i]+1):min(maxage,(first_day[i]+30)))){ #setting the maximum last day as 30 days after the first day, because that is the maximum in teh real data
     if(y_sim[i,d-1] == 1){ # if the simulated nest is still active sample
       y_sim[i,d] <- rbinom(1,
                            size = 1,
