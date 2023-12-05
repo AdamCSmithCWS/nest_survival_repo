@@ -76,4 +76,12 @@ sim_model_fit <- mod_prep$sample(data=stan_data_sim,
 summ_model <- sim_model_fit$summary(variables = "b")
 
 
+#testing to see if the simulated data looks like the real data:
+library(ggplot2)
+
+sim_data<- as.data.frame(stan_data_sim)
+
+ggplot(sim_data, aes(x=density_50m, y=y)) +
+  geom_point() +
+  labs(x= "Density", y="Survival")
 
