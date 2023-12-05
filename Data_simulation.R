@@ -67,8 +67,8 @@ mod_prep <- cmdstanr::cmdstan_model(stan_file = "make_stan_model_like_tobias_rot
 
 sim_model_fit <- mod_prep$sample(data=stan_data_sim,
                                              refresh = 100, #default is 200, or 500
-                                             iter_sampling = 100, #just for initial attempts, but use the defaults when running for real - default =1000
-                                             iter_warmup = 500, #default = 1000
+                                             iter_sampling = 1000, #just for initial attempts, but use the defaults when running for real - default =1000
+                                             iter_warmup = 1000, #default = 1000
                                              parallel_chains = 4)#just for initial attempts, but use the defaults when running for real - default = 4
 
 
