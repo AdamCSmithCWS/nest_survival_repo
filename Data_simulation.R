@@ -77,6 +77,10 @@ summ_model <- sim_model_fit$summary(variables = "b")
 
 
 #testing to see if the simulated data looks like the real data:
+plot(stan_data_sim$density_50m, stan_data_sim$y, 
+     xlab = "Density", 
+     ylab = "Survival")
+
 library(ggplot2)
 
 sim_data<- as.data.frame(stan_data_sim)
