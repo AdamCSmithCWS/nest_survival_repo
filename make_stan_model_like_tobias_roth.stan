@@ -27,7 +27,9 @@ transformed parameters {
 model {
   
   //priors
-  b ~ normal(0,0.1);
+  b[1]~ normal(1.5,1); //the mean is on the inverse logit scale - so 1.5 is a daily survival of 0.82. 
+    b[2]~ normal(0,0.1);
+      b[3]~ normal(0,0.1);
   
   //likelihood
   if(use_likelihood){
