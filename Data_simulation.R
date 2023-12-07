@@ -77,15 +77,49 @@ summ_model <- sim_model_fit$summary(variables = "b")
 
 
 #testing to see if the simulated data looks like the real data:
-plot(stan_data_sim$density_50m, stan_data_sim$y, 
-     xlab = "Density", 
-     ylab = "Survival")
+#I ran the Data_prep_alr.R file to get the matrix y
+row_sums_y<- rowSums(y)
+row_sums_y_sim<- rowSums(y_sim)
+hist(row_sums_y)
+hist(row_sums_y_sim)
+#So these are the number of days each nest was active. 
+#they look pretty similar in overall shape -- y falls off more quickly than y_sim
 
-library(ggplot2)
+mean(row_sums_y)
+mean((row_sums_y_sim))
+#The means differ by about 2 days, which seems like a lot. 
 
-sim_data<- as.data.frame(stan_data_sim)
+#lets compare that to density
 
-ggplot(sim_data, aes(x=density_50m, y=y)) +
-  geom_point() +
-  labs(x= "Density", y="Survival")
+#scatter plot for simulated data
+# Create a data frame with density and average survival
+plot_data <- data.frame(density = density_50m, row_sums_y_sim= row_sums_y_sim)
 
+# Use tapply to calculate mean survival for each density value
+mean_survival_by_density <- tapply(plot_data$row_sums_y_sim, plot_data$density, mean)
+
+# Convert the result to a data frame
+plot_data_summary <- data.frame(density = as.numeric(names(mean_survival_by_density)),
+                                mean_survival = as.vector(mean_survival_by_density))
+
+
+# Scatter plot for real data
+plot(plot_data_summary$density, plot_data_summary$mean_survival, 
+     xlab = "Density", ylab = "Mean Average Survival",
+     main = " y_sim: Mean Average Survival vs. Density", pch=21, bg="blue", cex=2)
+
+# Create a data frame with density and average survival
+plot_data_y <- data.frame(density = density_50m, row_sums_y = row_sums_y)
+
+# Use tapply to calculate mean survival for each density value
+mean_survival_by_density_y <- tapply(plot_data_y$row_sums_y, plot_data_y$density, mean)
+
+# Convert the result to a data frame
+plot_data_summary_y <- data.frame(density = as.numeric(names(mean_survival_by_density_y)),
+                                mean_survival_y = as.vector(mean_survival_by_density_y))
+
+# Scatter plot
+plot(plot_data_summary_y$density, plot_data_summary_y$mean_survival_y, 
+     xlab = "Density", ylab = "Mean Average Survival",
+     main = "y: Mean Average Survival vs. Density", pch=19, bg="blue", cex=2)
+#you can see that the mean survival days for density of 2 is 14 for y but for y_sim it is only 6.
