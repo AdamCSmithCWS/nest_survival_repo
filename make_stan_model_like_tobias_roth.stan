@@ -4,8 +4,8 @@ data {
   array[Nnests]int<lower=0> last_day_as_int_days; //for each of Nnests, the day it was last observed
   int<lower=0> maxage; //maximum of last
   array[Nnests, maxage]int<lower=0, upper=1> y; //indicator of alive nests
-  array[Nnests]int<lower=0> density_50m; //a covariate of the nests
-  array[Nnests]int<lower=0> snow_per;
+  vector[Nnests] density_50m; //a covariate of the nests
+  vector[Nnests] snow_per;
   int<lower=0,upper=1> use_likelihood;
 }
 
@@ -28,8 +28,8 @@ model {
   
   //priors
   b[1]~ normal(1.5,1); //the mean is on the inverse logit scale - so 1.5 is a daily survival of 0.82. 
-    b[2]~ normal(0,0.1);
-      b[3]~ normal(0,0.1);
+    b[2]~ normal(0,0.5);
+      b[3]~ normal(0,0.5);
   
   //likelihood
   if(use_likelihood){
