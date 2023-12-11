@@ -172,9 +172,9 @@ nest_data_goose <- east_bay_only_data %>%
 
 ## this loop fills in the number of shorebird, gull, and goose nests
 ## that overlap in time and are within set distances of each nest
-threshold_distance_shore <- set_units(50, "m")
+threshold_distance_shore <- set_units(500, "m")
 threshold_distance_gull <- set_units(150, "m")
-threshold_distance_goose <- set_units(50, "m")
+threshold_distance_goose <- set_units(500, "m")
 ## the loop works, runs quickly, and personally I like that we know
 ## that the shorebird nest in question is always the same one
 ## and so no possibility of a missmatch among matrices
