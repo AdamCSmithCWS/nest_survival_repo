@@ -21,13 +21,17 @@ all_data<-read.csv("raw_data/Final_Nest_Monitoring_EABA&COAT_ALL_years.csv")
 sp_list <- read_csv("species_list.csv")
 
 # below also removes nests with no location
+#I remove years before 2004 becuase the plot was changed in those years
+#This way, there is standard plot size/ search area
+#Finally, I take out any nests recorded outside of the plot at the goose colony
 east_bay_only_data <- subset(all_data, site== "East Bay Mainland") %>% 
   left_join(.,sp_list,
             by = "species") %>% 
   select(-n_nests) %>% 
   filter(!is.na(Nest_location_northing_WGS84_Dec_degree), 
-         !is.na(Nest_location_Easting_WGS84_Dec_degree))
-
+         !is.na(Nest_location_Easting_WGS84_Dec_degree),
+         year >= 2004,
+         !(plot %in% c("OUT (GC)", "trail to GC", "Goose camp intensive plot 3", "trail to goose camp", "TRAIL TO GC", "GOOSE CAMP", "Goose camp", "GC")))
 
 
 
