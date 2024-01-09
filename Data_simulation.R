@@ -11,7 +11,7 @@ maxage <- stan_data_real$maxage
 first_day <- stan_data_real$first_day_as_int_days
 
 
-density_50m <- stan_data_real$density_50m
+density_500m <- stan_data_real$density_500m
 snow_per <- stan_data_real$snow_per
 
 B_1 <- 1.7 # suggested intercept so that survival = 0.85
@@ -78,7 +78,7 @@ summ_model <- sim_model_fit$summary(variables = "b")
 
 #testing to see if the simulated data looks like the real data:
 #I ran the Data_prep_alr.R file to get the matrix y
-row_sums_y<- rowSums(y)
+row_sums_y<- rowSums(stan_data_real$y)
 row_sums_y_sim<- rowSums(y_sim)
 hist(row_sums_y)
 hist(row_sums_y_sim)
@@ -93,7 +93,7 @@ mean((row_sums_y_sim))
 
 #scatter plot for simulated data
 # Create a data frame with density and average survival
-plot_data <- data.frame(density = density_50m, row_sums_y_sim= row_sums_y_sim)
+plot_data <- data.frame(density = density_500m, row_sums_y_sim= row_sums_y_sim)
 
 # Use tapply to calculate mean survival for each density value
 mean_survival_by_density <- tapply(plot_data$row_sums_y_sim, plot_data$density, mean)
@@ -109,7 +109,7 @@ plot(plot_data_summary$density, plot_data_summary$mean_survival,
      main = " y_sim: Mean Average Survival vs. Density", pch=21, bg="blue", cex=2)
 
 # Create a data frame with density and average survival
-plot_data_y <- data.frame(density = density_50m, row_sums_y = row_sums_y)
+plot_data_y <- data.frame(density = density_500m, row_sums_y = row_sums_y)
 
 # Use tapply to calculate mean survival for each density value
 mean_survival_by_density_y <- tapply(plot_data_y$row_sums_y, plot_data_y$density, mean)
