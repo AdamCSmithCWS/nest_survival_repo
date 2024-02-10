@@ -32,7 +32,7 @@ y_sim <- matrix(data = 0,
 for(i in 1:Nnests){
   
   ## simulated nest-level daily survival
-  s_sim[i] <- inv.logit(B_1 + B_2_density*density_50m[i] + B_3_snow*snow_per[i])
+  s_sim[i] <- inv.logit(B_1 + B_2_density*density_500m[i] + B_3_snow*snow_per[i])
   
   ## first day has to == 1
   y_sim[i,first_day[i]] <- 1
