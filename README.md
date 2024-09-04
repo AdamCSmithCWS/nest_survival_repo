@@ -46,6 +46,9 @@ Things still to do:
   Posterior distributions of parameters
   Derived parameters
   Graphical summaries
+
+Additional: 	
+- We will want to get an idea of the distributions of the different species. Do any species aggregate more than others? Are they all the same?
  	
 -	Write manuscript
 
