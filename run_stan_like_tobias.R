@@ -18,8 +18,8 @@ library(tidyverse)
 stan_data <- readRDS("stan_data_list_all.rds")
 stan_data[["use_likelihood"]] <- as.integer(1) #need to set this to 1 if I am running the model. Set to 0 for prior predictive checks
 
-stan_data[["snow_per"]] <- as.numeric(scale(stan_data[["snow_per"]], scale = TRUE, center = FALSE))
-stan_data[["density_50m"]] <- as.numeric(scale(stan_data[["density_50m"]], scale = TRUE, center = FALSE))
+# stan_data[["snow_per"]] <- as.numeric(scale(stan_data[["snow_per"]], scale = TRUE, center = FALSE))
+# stan_data[["density_50m"]] <- as.numeric(scale(stan_data[["density_50m"]], scale = TRUE, center = FALSE))
 
 ## try cmdstanr: https://mc-stan.org/cmdstanr/articles/cmdstanr.html
 library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and it gives nicer error messages
@@ -27,9 +27,9 @@ library(cmdstanr) # I prefer this interface to Stan - it's more up to date, and 
 mod_prep <- cmdstanr::cmdstan_model(stan_file = "make_stan_model_like_tobias_roth.stan")
 
 run_stan_model_like_tobias<- mod_prep$sample(data=stan_data,
-                                             refresh = 100, #default is 200, or 500
-                                             iter_sampling = 100, #just for initial attempts, but use the defaults when running for real - default =1000
-                                             iter_warmup = 500, #default = 1000
+                                             refresh = 500, #default is 200, or 500
+                                             iter_sampling = 1000, #just for initial attempts, but use the defaults when running for real - default =1000
+                                             iter_warmup = 1000, #default = 1000
                                              parallel_chains = 4)#just for initial attempts, but use the defaults when running for real - default = 4
 
 summ_model <- run_stan_model_like_tobias$summary()
@@ -47,7 +47,7 @@ inv.logit(0.009489755)#for density (b2) #this may change as my model changes
 
 library(bayesplot)
 library(ggplot2)
-library(rstanarm)
+#library(rstanarm)
 #Posterior predictive checks
 #graph the results and then simulate data to see if they are similar to the results
 y<-run_stan_model_like_tobias$y

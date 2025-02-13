@@ -14,7 +14,7 @@ first_day <- stan_data_real$first_day_as_int_days
 density_50m <- stan_data_real$density_50m
 snow_per <- stan_data_real$snow_per
 
-B_1 <- 1.7 # suggested intercept so that survival = 0.85
+B_1 <- 1.5 # suggested intercept so that survival = 0.85
 B_2_density <- 0.5
 B_3_snow <- -0.5
 
@@ -78,7 +78,7 @@ summ_model <- sim_model_fit$summary(variables = "b")
 
 #testing to see if the simulated data looks like the real data:
 #I ran the Data_prep_alr.R file to get the matrix y
-row_sums_y<- rowSums(y)
+row_sums_y<- rowSums(stan_data_real$y)
 row_sums_y_sim<- rowSums(y_sim)
 hist(row_sums_y)
 hist(row_sums_y_sim)
@@ -97,6 +97,10 @@ plot_data <- data.frame(density = density_50m, row_sums_y_sim= row_sums_y_sim)
 
 # Use tapply to calculate mean survival for each density value
 mean_survival_by_density <- tapply(plot_data$row_sums_y_sim, plot_data$density, mean)
+
+plot_data <- plot_data %>% 
+  group_by(factor(density)) %>% 
+  mutate(mean_survival_by_density = mean(row_sums_y_sim))
 
 # Convert the result to a data frame
 plot_data_summary <- data.frame(density = as.numeric(names(mean_survival_by_density)),
