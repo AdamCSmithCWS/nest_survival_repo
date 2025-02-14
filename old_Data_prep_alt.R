@@ -397,6 +397,8 @@ stan_data <- list(Nnests = nrow(clean_nest_fate_data_shore),
                   y = y,
                   density_50m = clean_nest_fate_data_shore$n_shore_nests_near,
                   snow_per=as.numeric(clean_nest_fate_data_shore$mean_snow_cover),
+                  density_500m = clean_nest_fate_data_shore$n_shore_nests_near,
+                  snow_per=as.numeric(clean_nest_fate_data_shore$snow_per_scaled),
                   density_goose = clean_nest_fate_data_shore$n_goose_nests_near,
                   density_gull = clean_nest_fate_data_shore$n_gull_nests_near)
 
